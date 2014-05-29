@@ -1,0 +1,32 @@
+name: AudioDB
+version: 0.1
+synopsis: Bindings to the libaudioDB feature database
+homepage: http://code.ismsgroup.net/audiodb/haskell/
+author: Richard Lewis
+build-type: Simple
+cabal-version: >= 1.8
+
+library
+  build-depends: base, filepath, vector
+  exposed-modules: AudioDB
+  other-modules: ADB
+  hs-source-dirs: src
+  include-dirs: include
+  ghc-options: -Wall
+
+executable test
+  build-depends: base, vector
+  main-is: ADBTest.hs
+  hs-source-dirs: tests
+  other-modules: ADB
+  hs-source-dirs: src
+  include-dirs: include
+  ghc-options: -Wall
+  extra-libraries: audioDB
+
+executable adb
+  build-depends: base, filepath, AudioDB
+  main-is: ADBCLI.hs
+  hs-source-dirs: src
+  include-dirs: include
+  other-modules: ADB
