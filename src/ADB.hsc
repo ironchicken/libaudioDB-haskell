@@ -1,16 +1,21 @@
+-- AudioDB - Haskell bindings to the libaudioDB audio search engine library
+--
+-- Copyright (C) 2014 Richard Lewis, Goldsmiths' College
+-- Author: richard.lewis@gold.ac.uk
+--
+-- This module implements the basic FFI bindings.
+
 {-# LANGUAGE ForeignFunctionInterface, CPP #-}
 module ADB where
 
+import Data.List (intercalate)
+import Data.Char (chr)
 import Foreign
 import Foreign.C.Types
 import Foreign.C.String
--- import Foreign.Marshal.Array
+import qualified Data.Vector.Storable as DV
 
 #include "audioDB_API.h"
-
--- This is used by the hsc2hs pre-processor to calculate the alignment
--- for C structs
--- #let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
 
 data ADB = ADB (Ptr ADB)
 -- data AudioDB = AudioDB !(ForeignPtr ADB)
@@ -18,78 +23,90 @@ data ADB = ADB (Ptr ADB)
 -- The ADB* ADTs are fairly literal mappings of each of the structs in
 -- the API
 data ADBDatum = ADBDatum {
-  datum_nvectors :: CUInt,
-  datum_dim      :: CUInt,
-  datum_key      :: Ptr CChar,
-  datum_data     :: Ptr CDouble,
-  datum_power    :: Ptr CDouble,
-  datum_times    :: Ptr CDouble } deriving (Eq, Show)
+  datum_nvectors :: Int,
+  datum_dim      :: Int,
+  datum_key      :: String,
+  datum_data     :: DV.Vector Double,
+  datum_power    :: Maybe (DV.Vector Double),
+  datum_times    :: Maybe (DV.Vector Double) } deriving (Eq, Show)
+type ADBDatumPtr = Ptr (ADBDatum)
 
 data ADBReference = ADBReference {
-  reference_features :: Ptr CChar,
-  reference_power    :: Ptr CChar,
-  reference_key      :: Ptr CChar,
-  reference_times    :: Ptr CChar } deriving (Eq, Show)
+  reference_features :: String,
+  reference_power    :: String,
+  reference_key      :: String,
+  reference_times    :: String } deriving (Eq, Show)
+type ADBReferencePtr = Ptr (ADBReference)
 
 data ADBStatus = ADBStatus {
-  status_numFiles         :: CUInt,
-  status_dim              :: CUInt,
-  status_dudCount         :: CUInt,
-  status_nullCount        :: CUInt,
-  status_flags            :: CUInt,
-  status_length           :: CULong,
-  status_data_region_size :: CULong } deriving (Eq, Show)
+  status_numFiles         :: Int,
+  status_dim              :: Int,
+  status_dudCount         :: Int,
+  status_nullCount        :: Int,
+  status_flags            :: Int,
+  status_length           :: Int,
+  status_data_region_size :: Int } deriving (Eq, Show)
+type ADBStatusPtr = Ptr (ADBStatus)
 
 data ADBResult = ADBResult {
-  result_qkey   :: Ptr CChar,
-  result_ikey   :: Ptr CChar,
-  result_qpos   :: CUInt,
-  result_ipos   :: CUInt,
-  result_dist   :: CDouble } deriving (Eq, Show)
+  result_qkey   :: String,
+  result_ikey   :: String,
+  result_qpos   :: Int,
+  result_ipos   :: Int,
+  result_dist   :: Double } deriving (Eq, Show)
+type ADBResultPtr = Ptr (ADBResult)
 
 data ADBKeyList = ADBKeyList {
-  keylist_nkeys  :: CUInt,
-  keylist_keys   :: Ptr (Ptr CChar) } deriving (Eq, Show)
+  keylist_nkeys  :: Int,
+  keylist_keys   :: [String] } deriving (Eq, Show)
+type ADBKeyListPtr = Ptr (ADBKeyList)
 
 data ADBQueryRefine = ADBQueryRefine {
-  query_refine_flags              :: CUInt,
+  query_refine_flags              :: RefinementFlag,
   query_refine_include            :: ADBKeyList,
   query_refine_exclude            :: ADBKeyList,
-  query_refine_radius             :: CDouble,
-  query_refine_absolute_threshold :: CDouble,
-  query_refine_relative_threshold :: CDouble,
-  query_refine_duration_ratio     :: CDouble,
-  query_refine_qhopsize           :: CUInt,
-  query_refine_ihopsize           :: CUInt } deriving (Eq, Show)
+  query_refine_radius             :: Double,
+  query_refine_absolute_threshold :: Double,
+  query_refine_relative_threshold :: Double,
+  query_refine_duration_ratio     :: Double,
+  query_refine_qhopsize           :: Int,
+  query_refine_ihopsize           :: Int } deriving (Eq, Show)
+type ADBQueryRefinePtr = Ptr (ADBQueryRefine)
 
 data ADBQueryParameters = ADBQueryParameters {
-  query_parameters_accumulation  :: CUInt,
-  query_parameters_distance      :: CUInt,
-  query_parameters_npoints       :: CUInt,
-  query_parameters_ntracks       :: CUInt } deriving (Eq, Show)
+  query_parameters_accumulation  :: Int,
+  query_parameters_distance      :: Int,
+  query_parameters_npoints       :: Int,
+  query_parameters_ntracks       :: Int } deriving (Eq, Show)
+type ADBQueryParametersPtr = Ptr (ADBQueryParameters)
 
 data ADBQueryResults = ADBQueryResults {
-  query_results_nresults :: CUInt,
-  query_results_results  :: Ptr ADBResult } deriving (Eq, Show)
+  query_results_nresults :: Int,
+  query_results_results  :: [ADBResult] } deriving (Eq, Show)
+type ADBQueryResultsPtr = Ptr (ADBQueryResults)
 
 data ADBQueryID = ADBQueryID {
-  queryid_datum           :: Ptr ADBDatum,
-  queryid_sequence_length :: CUInt,
-  queryid_flags           :: CUInt,
-  queryid_sequence_start  :: CUInt } deriving (Eq, Show)
+  queryid_datum           :: ADBDatum, -- ADBDatumPtr
+  queryid_sequence_length :: Int,
+  queryid_flags           :: QueryIDFlag,
+  queryid_sequence_start  :: Int } deriving (Eq, Show)
+type ADBQueryIDPtr = Ptr (ADBQueryID)
 
 data ADBQuerySpec = ADBQuerySpec {
   query_spec_qid      :: ADBQueryID,
   query_spec_params   :: ADBQueryParameters,
   query_spec_refine   :: ADBQueryRefine } deriving (Eq, Show)
+type ADBQuerySpecPtr = Ptr (ADBQuerySpec)
 
 data ADBTrackEntry = ADBTrackEntry {
-  track_entry_nvectors :: CUInt,
-  track_entry_key      :: Ptr CChar } deriving (Eq, Show)
+  track_entry_nvectors :: Int,
+  track_entry_key      :: String } deriving (Eq, Show)
+type ADBTrackEntryPtr = Ptr (ADBTrackEntry)
 
 data ADBLisztResults = ADBLisztResults {
-  liszt_results_nresults :: CUInt,
-  liszt_results_entries  :: Ptr ADBTrackEntry } deriving (Eq, Show)
+  liszt_results_nresults :: Int,
+  liszt_results_entries  :: [ADBTrackEntry] } deriving (Eq, Show)
+type ADBLisztResultsPtr = Ptr (ADBLisztResults)
 
 -- Storable instances for all the structs allowing us to marshall them
 -- in and out of the library
@@ -98,13 +115,25 @@ instance Storable ADBDatum where
   sizeOf _ = #{size adb_datum_t}
 
   peek d = do
-    nv'    <- (#peek adb_datum_t, nvectors) d
-    dim'   <- (#peek adb_datum_t, dim) d
-    -- key'   <- peekCString (#{ptr adb_datum_t, key} d)
-    key'   <- (#peek adb_datum_t, key) d
-    data'  <- (#peek adb_datum_t, data) d
-    power' <- (#peek adb_datum_t, power) d
-    times' <- (#peek adb_datum_t, times) d
+    nv' <- fmap fromIntegral (((#peek adb_datum_t, nvectors) d) :: IO CUInt)
+
+    dim' <- fmap fromIntegral (((#peek adb_datum_t, dim) d) :: IO CUInt)
+
+    keyPtr <- ((#peek adb_datum_t, key) d) :: IO CString
+    key'   <- peekCString keyPtr
+
+    dataField <- ((#peek adb_datum_t, data) d) :: IO (Ptr Double)
+    dataPtr   <- newForeignPtr_ dataField
+    let data' = DV.unsafeFromForeignPtr0 dataPtr (nv' * dim')
+
+    powerField <- ((#peek adb_datum_t, power) d) :: IO (Ptr Double)
+    powerPtr   <- newForeignPtr_ powerField
+    let power' = if powerField /= nullPtr then Just (DV.unsafeFromForeignPtr0 powerPtr nv') else Nothing
+
+    timesField <- ((#peek adb_datum_t, times) d) :: IO (Ptr Double)
+    timesPtr   <- newForeignPtr_ timesField
+    let times' = if timesField /= nullPtr then Just (DV.unsafeFromForeignPtr0 timesPtr nv') else Nothing
+
     return ADBDatum { datum_nvectors = nv',
                       datum_dim      = dim',
                       datum_key      = key',
@@ -115,43 +144,68 @@ instance Storable ADBDatum where
   poke d (ADBDatum nv' dim' key' data' power' times') = do
     (#poke adb_datum_t, nvectors) d nv'
     (#poke adb_datum_t, dim) d dim'
-    (#poke adb_datum_t, key) d key'
-    (#poke adb_datum_t, data) d data'
-    (#poke adb_datum_t, power) d power'
-    (#poke adb_datum_t, times) d times'
+
+    key'' <- newCString key'
+    (#poke adb_datum_t, key) d key''
+
+    DV.unsafeWith data' (\ptrData -> (#poke adb_datum_t, data) d ptrData)
+
+    -- FIXME When the POWER flag is set, providing a NULL pointer for
+    -- the power value is not acceptable (and vice versa too). I think
+    -- this may have to be protected against at the next level up, or
+    -- at least somewhere where a function can read both the flags and
+    -- the proposed datum at the same time. Or possibly the library
+    -- expects some other value to indicate no powers?
+    maybe ((#poke adb_datum_t, power) d nullPtr) (\pow -> DV.unsafeWith pow (\ptrPower -> (#poke adb_datum_t, power) d ptrPower)) power'
+    maybe ((#poke adb_datum_t, times) d nullPtr) (\tim -> DV.unsafeWith tim (\ptrTimes -> (#poke adb_datum_t, times) d ptrTimes)) times'
 
 instance Storable ADBReference where
   alignment _ = alignment (undefined :: CDouble)
   sizeOf _ = #{size adb_reference_t}
 
   peek r = do
-    features' <- (#peek adb_reference_t, features) r
-    power'    <- (#peek adb_reference_t, power) r
-    key'      <- (#peek adb_reference_t, key) r
-    times'    <- (#peek adb_reference_t, times) r
+    featuresPtr <- ((#peek adb_reference_t, features) r) :: IO CString
+    features'   <- peekCString featuresPtr
+
+    powerPtr <- ((#peek adb_reference_t, power) r) :: IO CString
+    power'   <- peekCString powerPtr
+
+    keyPtr <- ((#peek adb_reference_t, key) r) :: IO CString
+    key'   <- peekCString keyPtr
+
+    timesPtr <- ((#peek adb_reference_t, times) r) :: IO CString
+    times'   <- peekCString timesPtr
+
     return ADBReference { reference_features = features',
                           reference_power    = power',
                           reference_key      = key',
                           reference_times    = times' }
 
   poke r (ADBReference features' power' key' times') = do
-    (#poke adb_reference_t, features) r features'
-    (#poke adb_reference_t, power) r power'
-    (#poke adb_reference_t, key) r key'
-    (#poke adb_reference_t, times) r times'
+    features'' <- newCString features'
+    (#poke adb_reference_t, features) r features''
+
+    power'' <- newCString power'
+    (#poke adb_reference_t, power) r power''
+
+    key'' <- newCString key'
+    (#poke adb_reference_t, key) r key''
+
+    times'' <- newCString times'
+    (#poke adb_reference_t, times) r times''
 
 instance Storable ADBStatus where
   alignment _ = alignment (undefined :: CDouble)
   sizeOf _ = #{size adb_status_t}
 
   peek s = do
-    numFiles'         <- (#peek adb_status_t, numFiles) s
-    dim'              <- (#peek adb_status_t, dim) s
-    dudCount'         <- (#peek adb_status_t, dudCount) s
-    nullCount'        <- (#peek adb_status_t, nullCount) s
-    flags'            <- (#peek adb_status_t, flags) s
-    length'           <- (#peek adb_status_t, length) s
-    data_region_size' <- (#peek adb_status_t, data_region_size) s
+    numFiles'         <- fmap fromIntegral (((#peek adb_status_t, numFiles) s) :: IO CUInt)
+    dim'              <- fmap fromIntegral (((#peek adb_status_t, dim) s) :: IO CUInt)
+    dudCount'         <- fmap fromIntegral (((#peek adb_status_t, dudCount) s) :: IO CUInt)
+    nullCount'        <- fmap fromIntegral (((#peek adb_status_t, nullCount) s) :: IO CUInt)
+    flags'            <- fmap fromIntegral (((#peek adb_status_t, flags) s) :: IO CUInt)
+    length'           <- fmap fromIntegral (((#peek adb_status_t, length) s) :: IO CULong)
+    data_region_size' <- fmap fromIntegral (((#peek adb_status_t, data_region_size) s) :: IO CULong)
     return ADBStatus { status_numFiles         = numFiles',
                        status_dim              = dim',
                        status_dudCount         = dudCount',
@@ -174,11 +228,15 @@ instance Storable ADBResult where
   sizeOf _ = #{size adb_result_t}
 
   peek r = do
-    qkey' <- (#peek adb_result_t, qkey) r
-    ikey' <- (#peek adb_result_t, ikey) r
-    qpos' <- (#peek adb_result_t, qpos) r
-    ipos' <- (#peek adb_result_t, ipos) r
-    dist' <- (#peek adb_result_t, dist) r
+    qkeyPtr <- ((#peek adb_result_t, qkey) r) :: IO CString
+    qkey'   <- peekCString qkeyPtr
+
+    ikeyPtr <- ((#peek adb_result_t, ikey) r) :: IO CString
+    ikey'   <- peekCString ikeyPtr
+
+    qpos' <- fmap fromIntegral (((#peek adb_result_t, qpos) r) :: IO CUInt)
+    ipos' <- fmap fromIntegral (((#peek adb_result_t, ipos) r) :: IO CUInt)
+    dist' <- fmap realToFrac (((#peek adb_result_t, dist) r) :: IO CDouble)
     return ADBResult { result_qkey = qkey',
                        result_ikey = ikey',
                        result_qpos = qpos',
@@ -186,40 +244,64 @@ instance Storable ADBResult where
                        result_dist = dist' }
 
   poke r (ADBResult qkey' ikey' qpos' ipos' dist') = do
-    (#poke adb_result_t, qkey) r qkey'
-    (#poke adb_result_t, ikey) r ikey'
+    qkey'' <- newCString qkey'
+    (#poke adb_result_t, qkey) r qkey''
+
+    ikey'' <- newCString ikey'
+    (#poke adb_result_t, ikey) r ikey''
+
     (#poke adb_result_t, qpos) r qpos'
     (#poke adb_result_t, ipos) r ipos'
     (#poke adb_result_t, dist) r dist'
+
+splitCStrL :: Ptr CChar -> Int -> IO [String]
+splitCStrL p n = splt p []
+  where
+    splt :: Ptr CChar -> [String] -> IO [String]
+    splt ptr acc = do
+      s <- peekCString ptr
+      l <- if (length acc) < n then splt (ptr `plusPtr` (length s)) (s : acc) else return acc
+      return (reverse l)
+
+joinCStrL :: [String] -> IO CString
+joinCStrL ss = do
+  let s = intercalate [(chr 0)] ss
+  cs <- newCString s
+  return cs
 
 instance Storable ADBKeyList where
   alignment _ = alignment (undefined :: CDouble)
   sizeOf _ = #{size adb_keylist_t}
 
   peek kl = do
-    nkeys' <- (#peek adb_keylist_t, nkeys) kl
-    keys'  <- (#peek adb_keylist_t, keys) kl
+    nkeys' <- fmap fromIntegral (((#peek adb_keylist_t, nkeys) kl) :: IO CUInt)
+
+    keysPtr <- ((#peek adb_keylist_t, keys) kl) :: IO (Ptr CChar)
+    keys'   <- splitCStrL keysPtr nkeys'
+
     return ADBKeyList { keylist_nkeys = nkeys',
                         keylist_keys  = keys' }
 
   poke kl (ADBKeyList nkeys' keys') = do
     (#poke adb_keylist_t, nkeys) kl nkeys'
-    (#poke adb_keylist_t, keys) kl keys'
+    keys'' <- joinCStrL keys'
+    (#poke adb_keylist_t, keys) kl keys''
 
 instance Storable ADBQueryRefine where
   alignment _ = alignment (undefined :: CDouble)
   sizeOf _ = #{size adb_query_refine_t}
 
   peek qr = do
-    flags'              <- (#peek adb_query_refine_t, flags) qr             
-    include'            <- (#peek adb_query_refine_t, include) qr           
-    exclude'            <- (#peek adb_query_refine_t, exclude) qr           
-    radius'             <- (#peek adb_query_refine_t, radius) qr            
-    absolute_threshold' <- (#peek adb_query_refine_t, absolute_threshold) qr
-    relative_threshold' <- (#peek adb_query_refine_t, relative_threshold) qr
-    duration_ratio'     <- (#peek adb_query_refine_t, duration_ratio) qr    
-    qhopsize'           <- (#peek adb_query_refine_t, qhopsize) qr          
-    ihopsize'           <- (#peek adb_query_refine_t, ihopsize) qr
+    flags''             <- ((#peek adb_query_refine_t, flags) qr) :: IO CUInt
+    let flags'          = RefinementFlag { unRefinementFlag = flags'' }
+    include'            <- (#peek adb_query_refine_t, include) qr
+    exclude'            <- (#peek adb_query_refine_t, exclude) qr
+    radius'             <- fmap realToFrac (((#peek adb_query_refine_t, radius) qr) :: IO CDouble)
+    absolute_threshold' <- fmap realToFrac (((#peek adb_query_refine_t, absolute_threshold) qr) :: IO CDouble)
+    relative_threshold' <- fmap realToFrac (((#peek adb_query_refine_t, relative_threshold) qr) :: IO CDouble)
+    duration_ratio'     <- fmap realToFrac (((#peek adb_query_refine_t, duration_ratio) qr) :: IO CDouble)
+    qhopsize'           <- fmap fromIntegral (((#peek adb_query_refine_t, qhopsize) qr) :: IO CUInt)
+    ihopsize'           <- fmap fromIntegral (((#peek adb_query_refine_t, ihopsize) qr) :: IO CUInt)
     return ADBQueryRefine { query_refine_flags              = flags',
                             query_refine_include            = include',
                             query_refine_exclude            = exclude',
@@ -231,7 +313,7 @@ instance Storable ADBQueryRefine where
                             query_refine_ihopsize           = ihopsize' }
 
   poke qr (ADBQueryRefine flags' include' exclude' radius' absolute_threshold' relative_threshold' duration_ratio' qhopsize' ihopsize') = do
-    (#poke adb_query_refine_t, flags) qr flags'
+    (#poke adb_query_refine_t, flags) qr (unRefinementFlag flags')
     (#poke adb_query_refine_t, include) qr include'
     (#poke adb_query_refine_t, exclude) qr exclude'
     (#poke adb_query_refine_t, radius) qr radius'
@@ -246,10 +328,10 @@ instance Storable ADBQueryParameters where
   sizeOf _ = #{size adb_query_parameters_t}
 
   peek qp = do
-    accumulation' <- (#peek adb_query_parameters_t, accumulation) qp
-    distance'     <- (#peek adb_query_parameters_t, distance) qp
-    npoints'      <- (#peek adb_query_parameters_t, npoints) qp
-    ntracks'      <- (#peek adb_query_parameters_t, ntracks) qp
+    accumulation' <- fmap fromIntegral (((#peek adb_query_parameters_t, accumulation) qp) :: IO CUInt)
+    distance'     <- fmap fromIntegral (((#peek adb_query_parameters_t, distance) qp) :: IO CUInt)
+    npoints'      <- fmap fromIntegral (((#peek adb_query_parameters_t, npoints) qp) :: IO CUInt)
+    ntracks'      <- fmap fromIntegral (((#peek adb_query_parameters_t, ntracks) qp) :: IO CUInt)
     return ADBQueryParameters { query_parameters_accumulation = accumulation',
                                 query_parameters_distance     = distance',
                                 query_parameters_npoints      = npoints',
@@ -266,14 +348,13 @@ instance Storable ADBQueryResults where
   sizeOf _ = #{size adb_query_results_t}
 
   peek qr = do
-    nresults' <- (#peek adb_query_results_t, nresults) qr
-    results'  <- (#peek adb_query_results_t, results) qr
+    nresults'  <- fmap fromIntegral (((#peek adb_query_results_t, nresults) qr) :: IO CUInt)
+    resultsPtr <- (#peek adb_query_results_t, results) qr
+    results'   <- peekArray nresults' resultsPtr--(#peek adb_query_results_t, results) qr
     return ADBQueryResults { query_results_nresults = nresults',
                              query_results_results  = results' }
 
-  poke qr (ADBQueryResults nresults' results') = do
-    (#poke adb_query_results_t, nresults) qr nresults'
-    (#poke adb_query_results_t, results) qr results'
+  poke = error "ADBQueryResults is read-only"
 
 instance Storable ADBQueryID where
   alignment _ = alignment (undefined :: CDouble)
@@ -281,9 +362,10 @@ instance Storable ADBQueryID where
 
   peek qid = do
     datum'           <- (#peek adb_query_id_t, datum) qid
-    sequence_length' <- (#peek adb_query_id_t, sequence_length) qid
-    flags'           <- (#peek adb_query_id_t, flags) qid
-    sequence_start'  <- (#peek adb_query_id_t, sequence_start) qid
+    sequence_length' <- fmap fromIntegral (((#peek adb_query_id_t, sequence_length) qid) :: IO CUInt)
+    flags''          <- ((#peek adb_query_id_t, flags) qid) :: IO CUInt
+    let flags'       = QueryIDFlag { unQueryIDFlag = flags'' }
+    sequence_start'  <- fmap fromIntegral (((#peek adb_query_id_t, sequence_start) qid) :: IO CUInt)
     return ADBQueryID { queryid_datum           = datum',
                         queryid_sequence_length = sequence_length',
                         queryid_flags           = flags',
@@ -292,7 +374,7 @@ instance Storable ADBQueryID where
   poke qid (ADBQueryID datum' sequence_length' flags' sequence_start') = do
     (#poke adb_query_id_t, datum) qid datum'
     (#poke adb_query_id_t, sequence_length) qid sequence_length'
-    (#poke adb_query_id_t, flags) qid flags'
+    (#poke adb_query_id_t, flags) qid (unQueryIDFlag flags')
     (#poke adb_query_id_t, sequence_start) qid sequence_start'
 
 instance Storable ADBQuerySpec where
@@ -317,28 +399,32 @@ instance Storable ADBTrackEntry where
   sizeOf _ = #{size adb_track_entry_t}
 
   peek te = do
-    nvectors' <- (#peek adb_track_entry_t, nvectors) te
-    key'      <- (#peek adb_track_entry_t, key) te
+    nvectors' <- fmap fromIntegral (((#peek adb_track_entry_t, nvectors) te) :: IO CUInt)
+
+    keyPtr <- ((#peek adb_track_entry_t, key) te) :: IO CString
+    key'   <- peekCString keyPtr
+
     return ADBTrackEntry { track_entry_nvectors = nvectors',
                            track_entry_key      = key' }
 
   poke te (ADBTrackEntry nvectors' key') = do
     (#poke adb_track_entry_t, nvectors) te nvectors'
-    (#poke adb_track_entry_t, key) te key'
+
+    key'' <- newCString key'
+    (#poke adb_track_entry_t, key) te key''
 
 instance Storable ADBLisztResults where
   alignment _ = alignment (undefined :: CDouble)
   sizeOf _ = #{size adb_liszt_results_t}
 
   peek lr = do
-    nresults' <- (#peek adb_liszt_results_t, nresults) lr
-    entries'  <- (#peek adb_liszt_results_t, entries) lr
+    nresults'  <- fmap fromIntegral (((#peek adb_liszt_results_t, nresults) lr) :: IO CUInt)
+    entriesPtr <- (#peek adb_liszt_results_t, entries) lr
+    entries'   <- peekArray nresults' entriesPtr
     return ADBLisztResults { liszt_results_nresults = nresults',
                              liszt_results_entries  = entries' }
 
-  poke lr (ADBLisztResults nresults' entries') = do
-    (#poke adb_liszt_results_t, nresults) lr nresults'
-    (#poke adb_liszt_results_t, entries) lr entries'
+  poke = error "ADBLisztResults is read-only"
 
 -- Importing the ADB_ flags
 
@@ -348,7 +434,7 @@ instance Storable ADBLisztResults where
   
 --   cInt :: a -> CInt
 
-newtype QueryIDFlag = QueryIDFlag { unQueryIDFlag :: CInt }
+newtype QueryIDFlag = QueryIDFlag { unQueryIDFlag :: CUInt }
                     deriving (Eq, Show)
 -- instance Flag QueryIDFlag where
 --   cInt = unQueryIDFlag
@@ -386,7 +472,7 @@ newtype DistanceFlag = DistanceFlag { unDistanceFlag :: CInt } deriving (Eq, Sho
 combineDistanceFlags :: [DistanceFlag] -> DistanceFlag
 combineDistanceFlags = DistanceFlag . foldr ((.|.) . unDistanceFlag) 0
 
-newtype RefinementFlag = RefinementFlag { unRefinementFlag :: CInt } deriving (Eq, Show)
+newtype RefinementFlag = RefinementFlag { unRefinementFlag :: CUInt } deriving (Eq, Show)
 
 #{enum RefinementFlag, RefinementFlag
  , includeKeyListFlag    = ADB_REFINE_INCLUDE_KEYLIST
@@ -419,40 +505,43 @@ foreign import ccall unsafe "audioDB_API.h audiodb_power"
   audiodb_power :: (Ptr ADB) -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_insert_datum"
-  audiodb_insert_datum :: (Ptr ADB) -> (Ptr ADBDatum) -> IO CInt
+  audiodb_insert_datum :: (Ptr ADB) -> ADBDatumPtr -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_insert_reference"
-  audiodb_insert_reference :: (Ptr ADB) -> (Ptr ADBReference) -> IO CInt
+  audiodb_insert_reference :: (Ptr ADB) -> ADBReferencePtr -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_query_spec"
-  audiodb_query_spec :: (Ptr ADB) -> (Ptr ADBQuerySpec) -> IO CInt
+  audiodb_query_spec :: (Ptr ADB) -> ADBQuerySpecPtr -> IO CInt
+
+foreign import ccall unsafe "audioDB_API.h audiodb_query_spec_given_sofar"
+  audiodb_audiodb_query_spec_given_sofar :: (Ptr ADB) -> ADBQuerySpecPtr -> ADBQueryResultsPtr -> IO ADBQueryResultsPtr
 
 foreign import ccall unsafe "audioDB_API.h audiodb_query_free_results"
-  audiodb_query_free_results :: (Ptr ADB) -> (Ptr ADBQuerySpec) -> (Ptr ADBQueryResults) -> IO CInt
+  audiodb_query_free_results :: (Ptr ADB) -> ADBQuerySpecPtr -> ADBQueryResultsPtr -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_status"
-  audiodb_status :: (Ptr ADB) -> (Ptr ADBStatus) -> IO CInt
+  audiodb_status :: (Ptr ADB) -> ADBStatusPtr -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_retrieve_datum"
-  audiodb_retrieve_datum :: (Ptr ADB) -> CString -> (Ptr ADBDatum) -> IO CInt
+  audiodb_retrieve_datum :: (Ptr ADB) -> CString -> ADBDatumPtr -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_free_datum"
-  audiodb_free_datum :: (Ptr ADB) -> (Ptr ADBDatum) -> IO CInt
+  audiodb_free_datum :: (Ptr ADB) -> ADBDatumPtr -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_dump"
   audiodb_dump :: (Ptr ADB) -> CString -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_liszt"
-  audiodb_liszt :: (Ptr ADB) -> IO (Ptr ADBLisztResults)
+  audiodb_liszt :: (Ptr ADB) -> IO ADBLisztResultsPtr
 
 foreign import ccall unsafe "audioDB_API.h audiodb_liszt_free_results"
-  audiodb_liszt_free_results :: (Ptr ADB) -> (Ptr ADBLisztResults) -> IO CInt
+  audiodb_liszt_free_results :: (Ptr ADB) -> ADBLisztResultsPtr -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_sample_spec"
-  audiodb_sample_spec :: (Ptr ADB) -> (Ptr ADBQuerySpec) -> IO (Ptr ADBQueryResults)
+  audiodb_sample_spec :: (Ptr ADB) -> ADBQuerySpecPtr -> IO ADBQueryResultsPtr
 
 foreign import ccall unsafe "audioDB_API.h audiodb_insert"
-  audiodb_insert :: (Ptr ADB) -> (Ptr ADBReference) -> IO CInt
+  audiodb_insert :: (Ptr ADB) -> ADBReferencePtr -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_batchinsert"
-  audiodb_batchinsert :: (Ptr ADB) -> (Ptr ADBReference) -> CUInt -> IO CInt
+  audiodb_batchinsert :: (Ptr ADB) -> ADBReferencePtr -> CUInt -> IO CInt

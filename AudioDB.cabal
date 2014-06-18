@@ -7,8 +7,8 @@ build-type: Simple
 cabal-version: >= 1.8
 
 library
-  build-depends: base, filepath, vector
-  exposed-modules: AudioDB
+  build-depends: base, filepath, vector, containers, parsec, MissingH
+  exposed-modules: AudioDB, MediaCollection
   other-modules: ADB
   hs-source-dirs: src
   include-dirs: include
@@ -24,8 +24,18 @@ executable test
   ghc-options: -Wall
   extra-libraries: audioDB
 
+executable audiodb-test
+  build-depends: base, vector, parsec, MissingH, filepath
+  main-is: AudioDBTest.hs
+  hs-source-dirs: tests
+  other-modules: AudioDB, ADB
+  hs-source-dirs: src
+  include-dirs: include
+  ghc-options: -Wall
+  extra-libraries: audioDB
+
 executable adb
-  build-depends: base, filepath, AudioDB
+  build-depends: base, filepath, vector, parsec, MissingH, AudioDB
   main-is: ADBCLI.hs
   hs-source-dirs: src
   include-dirs: include
