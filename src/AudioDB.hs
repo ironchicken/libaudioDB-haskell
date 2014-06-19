@@ -9,7 +9,8 @@
 module AudioDB where
 
 import           ADB
-import           Foreign (Ptr, peek)
+import           Foreign (Ptr)
+import           Foreign.Marshal.Utils (new)
 import           System.IO (withFile, IOMode( ReadMode ))
 import           System.IO.Unsafe (unsafePerformIO)
 import           System.FilePath (FilePath, takeBaseName)
@@ -45,33 +46,33 @@ _readCSVFeatures :: String                         -- key
                     -> FeaturesParser              -- features parser
                     -> Maybe (FilePath,
                               PowerFeaturesParser) -- power features file, parser
-                    -> IO (Maybe ADBDatum)
+                    -> IO (Maybe ADBDatumPtr)
 _readCSVFeatures key featuresFile featuresParser (Just (powersFile, powersParser)) = do
   (n, dim, features, times) <- featuresParser featuresFile
   pFeatures                 <- powersParser powersFile
   let power = pFeatures
-      datum = ADBDatum { datum_nvectors = n,
-                         datum_dim      = dim,
-                         datum_key      = key,
-                         datum_data     = features,
-                         datum_power    = power,
-                         datum_times    = times }
+  datum <- new ADBDatum { datum_nvectors = n,
+                          datum_dim      = dim,
+                          datum_key      = key,
+                          datum_data     = features,
+                          datum_power    = power,
+                          datum_times    = times }
   return (Just datum)
 
 _readCSVFeatures key featuresFile featuresParser Nothing = do
   (n, dim, features, times) <- featuresParser featuresFile
-  let datum = ADBDatum { datum_nvectors = n,
-                         datum_dim      = dim,
-                         datum_key      = key,
-                         datum_data     = features,
-                         datum_power    = Nothing,
-                         datum_times    = times }
+  datum <- new ADBDatum { datum_nvectors = n,
+                          datum_dim      = dim,
+                          datum_key      = key,
+                          datum_data     = features,
+                          datum_power    = Nothing,
+                          datum_times    = times }
   return (Just datum)
 
-readCSVFeaturesTimesPowers :: String -> FilePath -> FilePath -> IO (Maybe ADBDatum)
-readCSVFeaturesPowers      :: String -> FilePath -> FilePath -> IO (Maybe ADBDatum)
-readCSVFeaturesTimes       :: String -> FilePath -> IO (Maybe ADBDatum)
-readCSVFeaturesOnly        :: String -> FilePath -> IO (Maybe ADBDatum)
+readCSVFeaturesTimesPowers :: String -> FilePath -> FilePath -> IO (Maybe ADBDatumPtr)
+readCSVFeaturesPowers      :: String -> FilePath -> FilePath -> IO (Maybe ADBDatumPtr)
+readCSVFeaturesTimes       :: String -> FilePath -> IO (Maybe ADBDatumPtr)
+readCSVFeaturesOnly        :: String -> FilePath -> IO (Maybe ADBDatumPtr)
 
 readCSVFeaturesTimesPowers key featuresFile powersFile = _readCSVFeatures key featuresFile parseCSVFeaturesWithTimesFile    (Just (powersFile, parseCSVPowerFeaturesFile))
 readCSVFeaturesPowers key featuresFile powersFile      = _readCSVFeatures key featuresFile parseCSVFeaturesWithoutTimesFile (Just (powersFile, parseCSVPowerFeaturesFile))
@@ -127,27 +128,27 @@ parseCSVPowerFeaturesFile fp = do
 
   return (Just fVec)
 
-readChr12Features :: String -> FilePath -> IO (Maybe ADBDatum)
+readChr12Features :: String -> FilePath -> IO (Maybe ADBDatumPtr)
 readChr12Features = undefined
 
 parseChr12FeaturesFile :: FeaturesParser
 parseChr12FeaturesFile = undefined
 
-readN3Features :: String -> FilePath -> IO (Maybe ADBDatum)
+readN3Features :: String -> FilePath -> IO (Maybe ADBDatumPtr)
 readN3Features = undefined
 
 parseN3FeaturesFile :: FeaturesParser
 parseN3FeaturesFile = undefined
 
-featuresFromKey :: (Ptr ADB) -> String -> ADBDatum
+featuresFromKey :: (Ptr ADB) -> String -> ADBDatumPtr
 featuresFromKey = undefined
 
-insertFeatures :: (Ptr ADB) -> ADBDatum -> Bool
--- NOTE You need to make sure that powers are provided in ADBDatum
+insertFeatures :: (Ptr ADB) -> ADBDatumPtr -> Bool
+-- NOTE You need to make sure that powers are provided in ADBDatumPtr
 -- when ADB has the powers flag set
 insertFeatures = undefined
 
-initQuery :: ADBDatum      -- query datum
+initQuery :: ADBDatumPtr   -- query datum
              -> Int        -- sequence length
              -> Int        -- sequence start
              -> QueryIDFlag
@@ -192,34 +193,34 @@ initQuery datum sqLen sqStart qidFlgs acc dist ptsNN nTrks rfnFlgs incl excl rad
                     query_spec_refine = refine }
 
 initPointQuery :: (Ptr ADB)
-                  -> ADBDatum  -- query features
-                  -> Int       -- number of point nearest neighbours
+                  -> ADBDatumPtr -- query features
+                  -> Int         -- number of point nearest neighbours
                   -> ADBQuerySpec
 initPointQuery = undefined
 
 initTrackQuery :: (Ptr ADB)
-                  -> ADBDatum  -- query features
-                  -> Int       -- number of point nearest neighbours
-                  -> Int       -- number of tracks
+                  -> ADBDatumPtr -- query features
+                  -> Int         -- number of point nearest neighbours
+                  -> Int         -- number of tracks
                   -> ADBQuerySpec
 initTrackQuery = undefined
 
 initSequenceQuery :: (Ptr ADB)
-                     -> ADBDatum  -- query features
-                     -> Int       -- number of point nearest neighbours
-                     -> Int       -- number of tracks
+                     -> ADBDatumPtr -- query features
+                     -> Int         -- number of point nearest neighbours
+                     -> Int         -- number of tracks
                      -> ADBQuerySpec
 initSequenceQuery = undefined
 
 initNSequenceQuery :: (Ptr ADB)
-                      -> ADBDatum  -- query features
-                      -> Int       -- number of point nearest neighbours
-                      -> Int       -- number of tracks
+                      -> ADBDatumPtr -- query features
+                      -> Int         -- number of point nearest neighbours
+                      -> Int         -- number of tracks
                       -> ADBQuerySpec
 initNSequenceQuery = undefined
 
 initOneToOneSequenceQuery :: (Ptr ADB)
-                             -> ADBDatum  -- query features
+                             -> ADBDatumPtr  -- query features
                              -> ADBQuerySpec
 initOneToOneSequenceQuery = undefined
 

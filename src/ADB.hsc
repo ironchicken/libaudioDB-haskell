@@ -86,7 +86,7 @@ data ADBQueryResults = ADBQueryResults {
 type ADBQueryResultsPtr = Ptr (ADBQueryResults)
 
 data ADBQueryID = ADBQueryID {
-  queryid_datum           :: ADBDatum, -- ADBDatumPtr
+  queryid_datum           :: ADBDatumPtr,
   queryid_sequence_length :: Int,
   queryid_flags           :: QueryIDFlag,
   queryid_sequence_start  :: Int } deriving (Eq, Show)
