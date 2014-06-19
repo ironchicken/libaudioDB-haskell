@@ -153,10 +153,22 @@ parseN3FeaturesFile = undefined
 featuresFromKey :: (Ptr ADB) -> String -> ADBDatumPtr
 featuresFromKey = undefined
 
-insertFeatures :: (Ptr ADB) -> ADBDatumPtr -> Bool
--- NOTE You need to make sure that powers are provided in ADBDatumPtr
--- when ADB has the powers flag set
-insertFeatures = undefined
+insertFeatures :: (Ptr ADB) -> ADBDatumPtr -> IO Bool
+insertFeatures adb datumPtr =
+  withADBStatus (\status -> do
+                    let powered = (status_flags status) == powerFlag
+                    datum       <- peek datumPtr
+                    res         <- if powered == isJust (datum_power datum)
+                                   then audiodb_insert_datum adb datumPtr
+                                   else return (1 :: CInt)
+                    return (res == (0 :: CInt)))
+  adb
+
+insertMaybeFeatures :: (Ptr ADB) -> (Maybe ADBDatumPtr) -> IO Bool
+insertMaybeFeatures adb datumPtr = do
+  maybe (return False)
+    (\p -> do { insertFeatures adb p })
+    datumPtr
 
 initQuery :: ADBDatumPtr   -- query datum
              -> Int        -- sequence length

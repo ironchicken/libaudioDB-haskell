@@ -22,17 +22,6 @@ test_readCSVFeatures key fp = do
         free p
     ) datumPtr
 
-test_insertCSVFeatures :: Ptr ADB -> String -> FilePath -> IO (CInt)
-test_insertCSVFeatures adb key fp = do
-  datumPtr <- readCSVFeaturesTimes key fp
-  res <- maybe (return (99 :: CInt))
-         (\p -> do
-             res <- audiodb_insert_datum adb p
-             free p
-             return res)
-         datumPtr
-  return res
-
 main :: IO ()
 main = do
   -- FIXME If you reverse the sequence of insertCSVFeatures and
@@ -42,7 +31,11 @@ main = do
   adb      <- audiodb_create fp (CUInt 0) (CUInt 0) (CUInt 12)
   l2normed <- audiodb_l2norm adb
   -- powered  <- audiodb_power adb
-  insert   <- test_insertCSVFeatures adb "WandererSceneImplicit" "WandererSceneImplicit_vamp_nnls-chroma_nnls-chroma_chroma.csv"
+
+  datumPtr <- readCSVFeaturesTimes "WandererSceneImplicit" "WandererSceneImplicit_vamp_nnls-chroma_nnls-chroma_chroma.csv"
+  inserted <- insertMaybeFeatures adb datumPtr
+  putStrLn $ "Inserted 'WandererSceneImplicit': " ++ (show inserted)
+  maybe (return ()) (\d -> free d) datumPtr
 
   test_readCSVFeatures "WandererSceneImplicit" "WandererSceneImplicit_vamp_nnls-chroma_nnls-chroma_chroma.csv"
 
