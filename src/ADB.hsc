@@ -43,7 +43,7 @@ data ADBStatus = ADBStatus {
   status_dim              :: Int,
   status_dudCount         :: Int,
   status_nullCount        :: Int,
-  status_flags            :: Int,
+  status_flags            :: HeaderFlag,
   status_length           :: Int,
   status_data_region_size :: Int } deriving (Eq, Show)
 type ADBStatusPtr = Ptr (ADBStatus)
@@ -203,7 +203,8 @@ instance Storable ADBStatus where
     dim'              <- fmap fromIntegral (((#peek adb_status_t, dim) s) :: IO CUInt)
     dudCount'         <- fmap fromIntegral (((#peek adb_status_t, dudCount) s) :: IO CUInt)
     nullCount'        <- fmap fromIntegral (((#peek adb_status_t, nullCount) s) :: IO CUInt)
-    flags'            <- fmap fromIntegral (((#peek adb_status_t, flags) s) :: IO CUInt)
+    flags''           <- ((#peek adb_status_t, flags) s) :: IO CInt
+    let flags'        = HeaderFlag { unHeaderFlag = flags'' }
     length'           <- fmap fromIntegral (((#peek adb_status_t, length) s) :: IO CULong)
     data_region_size' <- fmap fromIntegral (((#peek adb_status_t, data_region_size) s) :: IO CULong)
     return ADBStatus { status_numFiles         = numFiles',
@@ -219,7 +220,7 @@ instance Storable ADBStatus where
     (#poke adb_status_t, dim) s dim'
     (#poke adb_status_t, dudCount) s dudCount'
     (#poke adb_status_t, nullCount) s nullCount'
-    (#poke adb_status_t, flags) s flags'
+    (#poke adb_status_t, flags) s (unHeaderFlag flags')
     (#poke adb_status_t, length) s length'
     (#poke adb_status_t, data_region_size) s data_region_size'
 
@@ -446,6 +447,26 @@ newtype QueryIDFlag = QueryIDFlag { unQueryIDFlag :: CUInt }
 
 combineQueryIDFlags :: [QueryIDFlag] -> QueryIDFlag
 combineQueryIDFlags = QueryIDFlag . foldr ((.|.) . unQueryIDFlag) 0
+
+-- These constants are defined in audioDB-internals.h which is a
+-- private header
+#define ADB_HEADER_FLAG_L2NORM		(0x1U)
+#define ADB_HEADER_FLAG_POWER		(0x4U)
+#define ADB_HEADER_FLAG_TIMES		(0x20U)
+#define ADB_HEADER_FLAG_REFERENCES	(0x40U)
+
+-- data Header = L2Norm | Power | Times | References
+newtype HeaderFlag = HeaderFlag { unHeaderFlag :: CInt } deriving (Eq, Show)
+
+#{enum HeaderFlag, HeaderFlag
+ , l2normFlag     = ADB_HEADER_FLAG_L2NORM
+ , powerFlag      = ADB_HEADER_FLAG_POWER
+ , timesFlag      = ADB_HEADER_FLAG_TIMES
+ , referencesFlag = ADB_HEADER_FLAG_REFERENCES
+ }
+
+combineHeaderFlags :: [HeaderFlag] -> HeaderFlag
+combineHeaderFlags = HeaderFlag . foldr ((.|.) . unHeaderFlag) 0
 
 -- data Accumulation = Database | PerTrack | OneToOne
 newtype AccumulationFlag = AccumulationFlag { unAccumulationFlag :: CInt } deriving (Eq, Show)

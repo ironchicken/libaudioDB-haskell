@@ -9,8 +9,11 @@
 module AudioDB where
 
 import           ADB
-import           Foreign (Ptr)
+import           Data.Maybe (isJust)
+import           Foreign (Ptr, peek)
+import           Foreign.C.Types
 import           Foreign.Marshal.Utils (new)
+import           Foreign.Marshal.Alloc (alloca)
 import           System.IO (withFile, IOMode( ReadMode ))
 import           System.IO.Unsafe (unsafePerformIO)
 import           System.FilePath (FilePath, takeBaseName)
@@ -36,6 +39,13 @@ withExistingAudioDB = undefined
 
 withNewAudioDB :: (ADBQuerySpec -> ADBResult) -> FilePath -> ADBResult
 withNewAudioDB = undefined
+
+withADBStatus :: (ADBStatus -> IO a) -> (Ptr ADB) -> IO a
+withADBStatus f adb = do
+  alloca $ \statusPtr -> do
+    res     <- audiodb_status adb statusPtr
+    status  <- peek statusPtr
+    (f status)
 
 type DatumProperties     = (Int, Int, DV.Vector Double, Maybe (DV.Vector Double))
 type FeaturesParser      = (FilePath -> IO DatumProperties)
