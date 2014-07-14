@@ -52,13 +52,13 @@ type DatumProperties     = (Int, Int, DV.Vector Double, Maybe (DV.Vector Double)
 type FeaturesParser      = (FilePath -> IO DatumProperties)
 type PowerFeaturesParser = (FilePath -> IO (Maybe (DV.Vector Double)))
 
-_readCSVFeatures :: String                         -- key
-                    -> FilePath                    -- features file
-                    -> FeaturesParser              -- features parser
-                    -> Maybe (FilePath,
-                              PowerFeaturesParser) -- power features file, parser
-                    -> IO (Maybe ADBDatumPtr)
-_readCSVFeatures key featuresFile featuresParser (Just (powersFile, powersParser)) = do
+_readFeaturesFile :: String                         -- key
+                     -> FilePath                    -- features file
+                     -> FeaturesParser              -- features parser
+                     -> Maybe (FilePath,
+                               PowerFeaturesParser) -- power features file, parser
+                     -> IO (Maybe ADBDatumPtr)
+_readFeaturesFile key featuresFile featuresParser (Just (powersFile, powersParser)) = do
   (n, dim, features, times) <- featuresParser featuresFile
   pFeatures                 <- powersParser powersFile
   let power = pFeatures
@@ -70,7 +70,7 @@ _readCSVFeatures key featuresFile featuresParser (Just (powersFile, powersParser
                           datum_times    = times }
   return (Just datum)
 
-_readCSVFeatures key featuresFile featuresParser Nothing = do
+_readFeaturesFile key featuresFile featuresParser Nothing = do
   (n, dim, features, times) <- featuresParser featuresFile
   datum <- new ADBDatum { datum_nvectors = n,
                           datum_dim      = dim,
@@ -85,10 +85,10 @@ readCSVFeaturesPowers      :: String -> FilePath -> FilePath -> IO (Maybe ADBDat
 readCSVFeaturesTimes       :: String -> FilePath -> IO (Maybe ADBDatumPtr)
 readCSVFeaturesOnly        :: String -> FilePath -> IO (Maybe ADBDatumPtr)
 
-readCSVFeaturesTimesPowers key featuresFile powersFile = _readCSVFeatures key featuresFile parseCSVFeaturesWithTimesFile    (Just (powersFile, parseCSVPowerFeaturesFile))
-readCSVFeaturesPowers key featuresFile powersFile      = _readCSVFeatures key featuresFile parseCSVFeaturesWithoutTimesFile (Just (powersFile, parseCSVPowerFeaturesFile))
-readCSVFeaturesTimes key featuresFile                  = _readCSVFeatures key featuresFile parseCSVFeaturesWithTimesFile    Nothing
-readCSVFeaturesOnly key featuresFile                   = _readCSVFeatures key featuresFile parseCSVFeaturesWithoutTimesFile Nothing
+readCSVFeaturesTimesPowers key featuresFile powersFile = _readFeaturesFile key featuresFile parseCSVFeaturesWithTimesFile    (Just (powersFile, parseCSVPowerFeaturesFile))
+readCSVFeaturesPowers key featuresFile powersFile      = _readFeaturesFile key featuresFile parseCSVFeaturesWithoutTimesFile (Just (powersFile, parseCSVPowerFeaturesFile))
+readCSVFeaturesTimes key featuresFile                  = _readFeaturesFile key featuresFile parseCSVFeaturesWithTimesFile    Nothing
+readCSVFeaturesOnly key featuresFile                   = _readFeaturesFile key featuresFile parseCSVFeaturesWithoutTimesFile Nothing
 
 dblHead :: [String] -> Maybe (Double, [String])
 dblHead (d:ds) = (Just (read d, ds))
