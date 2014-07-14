@@ -14,6 +14,7 @@ import           Foreign (Ptr, peek)
 import           Foreign.C.Types
 import           Foreign.Marshal.Utils (new)
 import           Foreign.Marshal.Alloc (alloca)
+import           Foreign.C.String (newCString)
 import           System.IO (withFile, IOMode( ReadMode ))
 import           System.IO.Unsafe (unsafePerformIO)
 import           System.FilePath (FilePath, takeBaseName)
@@ -150,8 +151,13 @@ readN3Features = undefined
 parseN3FeaturesFile :: FeaturesParser
 parseN3FeaturesFile = undefined
 
-featuresFromKey :: (Ptr ADB) -> String -> ADBDatumPtr
-featuresFromKey = undefined
+featuresFromKey :: (Ptr ADB) -> String -> IO (Maybe ADBDatum)
+featuresFromKey adb key = alloca $ \datumPtr -> do
+  key'  <- newCString key
+  res   <- audiodb_retrieve_datum adb key' datumPtr
+  if res /= 0
+    then return $ Nothing
+    else do datum <- peek datumPtr; return $ Just datum
 
 insertFeatures :: (Ptr ADB) -> ADBDatumPtr -> IO Bool
 insertFeatures adb datumPtr =

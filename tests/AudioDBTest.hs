@@ -37,6 +37,9 @@ main = do
   putStrLn $ "Inserted 'WandererSceneImplicit': " ++ (show inserted)
   maybe (return ()) (\d -> free d) datumPtr
 
+  features <- featuresFromKey adb "WandererSceneImplicit"
+  maybe (putStrLn "Could not retrieve 'WandererSceneImplicit'") (\f -> do putStrLn "Found 'WandererSceneImplicit'") features
+
   test_readCSVFeatures "WandererSceneImplicit" "WandererSceneImplicit_vamp_nnls-chroma_nnls-chroma_chroma.csv"
 
   putStrLn "Done."
