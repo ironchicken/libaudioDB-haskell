@@ -14,7 +14,7 @@ library
   include-dirs: include
   ghc-options: -Wall
 
-executable test
+executable adb-test
   build-depends: base, vector
   main-is: ADBTest.hs
   hs-source-dirs: tests
