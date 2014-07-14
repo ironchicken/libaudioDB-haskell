@@ -176,26 +176,26 @@ insertMaybeFeatures adb datumPtr = do
     (\p -> do { insertFeatures adb p })
     datumPtr
 
-initQuery :: ADBDatumPtr   -- query datum
-             -> Int        -- sequence length
-             -> Int        -- sequence start
-             -> QueryIDFlag
-             -> Int        -- accumulation
-             -> Int        -- distance
-             -> Int        -- number of point nearest neighbours
-             -> Int        -- number of tracks
-             -> RefinementFlag
-             -> ADBKeyList -- include
-             -> ADBKeyList -- exclude
-             -> Double     -- radius
-             -> Double     -- absoluate threshold
-             -> Double     -- relative threshold
-             -> Double     -- duration ratio
-             -> Int        -- query hop size
-             -> Int        -- instance hop size
-             -> ADBQuerySpec
+mkQuery :: ADBDatumPtr   -- query datum
+           -> Int        -- sequence length
+           -> Int        -- sequence start
+           -> QueryIDFlag
+           -> Int        -- accumulation
+           -> Int        -- distance
+           -> Int        -- number of point nearest neighbours
+           -> Int        -- number of tracks
+           -> RefinementFlag
+           -> ADBKeyList -- include
+           -> ADBKeyList -- exclude
+           -> Double     -- radius
+           -> Double     -- absoluate threshold
+           -> Double     -- relative threshold
+           -> Double     -- duration ratio
+           -> Int        -- query hop size
+           -> Int        -- instance hop size
+           -> ADBQuerySpec
 
-initQuery datum sqLen sqStart qidFlgs acc dist ptsNN nTrks rfnFlgs incl excl rad absThrsh relThrsh durRat qHopSz iHopSz =
+mkQuery datum sqLen sqStart qidFlgs acc dist ptsNN nTrks rfnFlgs incl excl rad absThrsh relThrsh durRat qHopSz iHopSz =
   let qid = ADBQueryID { queryid_datum           = datum,
                          queryid_sequence_length = sqLen,
                          queryid_flags           = qidFlgs,
@@ -220,37 +220,37 @@ initQuery datum sqLen sqStart qidFlgs acc dist ptsNN nTrks rfnFlgs incl excl rad
                     query_spec_params = params,
                     query_spec_refine = refine }
 
-initPointQuery :: (Ptr ADB)
-                  -> ADBDatumPtr -- query features
-                  -> Int         -- number of point nearest neighbours
-                  -> ADBQuerySpec
-initPointQuery = undefined
+mkPointQuery :: (Ptr ADB)
+                -> ADBDatumPtr -- query features
+                -> Int         -- number of point nearest neighbours
+                -> ADBQuerySpec
+mkPointQuery = undefined
 
-initTrackQuery :: (Ptr ADB)
-                  -> ADBDatumPtr -- query features
-                  -> Int         -- number of point nearest neighbours
-                  -> Int         -- number of tracks
-                  -> ADBQuerySpec
-initTrackQuery = undefined
+mkTrackQuery :: (Ptr ADB)
+                -> ADBDatumPtr -- query features
+                -> Int         -- number of point nearest neighbours
+                -> Int         -- number of tracks
+                -> ADBQuerySpec
+mkTrackQuery = undefined
 
-initSequenceQuery :: (Ptr ADB)
-                     -> ADBDatumPtr -- query features
-                     -> Int         -- number of point nearest neighbours
-                     -> Int         -- number of tracks
-                     -> ADBQuerySpec
-initSequenceQuery = undefined
+mkSequenceQuery :: (Ptr ADB)
+                   -> ADBDatumPtr -- query features
+                   -> Int         -- number of point nearest neighbours
+                   -> Int         -- number of tracks
+                   -> ADBQuerySpec
+mkSequenceQuery = undefined
 
-initNSequenceQuery :: (Ptr ADB)
-                      -> ADBDatumPtr -- query features
-                      -> Int         -- number of point nearest neighbours
-                      -> Int         -- number of tracks
-                      -> ADBQuerySpec
-initNSequenceQuery = undefined
+mkNSequenceQuery :: (Ptr ADB)
+                    -> ADBDatumPtr -- query features
+                    -> Int         -- number of point nearest neighbours
+                    -> Int         -- number of tracks
+                    -> ADBQuerySpec
+mkNSequenceQuery = undefined
 
-initOneToOneSequenceQuery :: (Ptr ADB)
-                             -> ADBDatumPtr  -- query features
-                             -> ADBQuerySpec
-initOneToOneSequenceQuery = undefined
+mkOneToOneSequenceQuery :: (Ptr ADB)
+                           -> ADBDatumPtr  -- query features
+                           -> ADBQuerySpec
+mkOneToOneSequenceQuery = undefined
 
 query :: (Ptr ADB) -> ADBQuerySpec -> ADBQueryResults
 query = undefined
