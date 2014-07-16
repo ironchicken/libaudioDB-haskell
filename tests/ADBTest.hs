@@ -75,11 +75,16 @@ main = do
   adb      <- audiodb_create fp (CUInt 0) (CUInt 0) (CUInt 2)
   l2normed <- audiodb_l2norm adb
   powered  <- audiodb_power adb
+  putStrLn $ (show fp) ++ ": l2normed: " ++ (show l2normed) ++ "; powered: " ++ (show powered)
 
   insert_res   <- test_audiodb_insert_datum adb
+  putStrLn $ "test_audiodb_insert_datum: " ++ (show insert_res)
   retrieve_res <- test_audiodb_retrieve_datum adb "Test"
+  putStrLn $ "test_audiodb_retrieve_datum: " ++ (show retrieve_res)
   inref_res    <- test_audiodb_insert_reference adb
+  putStrLn $ "test_audiodb_insert_reference: " ++ (show inref_res)
   status_res   <- test_audiodb_status adb
+  putStrLn $ "test_audiodb_status: " ++ (show status_res)
 
   -- fp <- newCString "chromarichard.n3.db"
   -- adb <- audiodb_open fp (CInt 0)

@@ -2,7 +2,6 @@ module Main where
 
 import           ADB
 import           AudioDB
-import           Data.Maybe
 import           Foreign
 import           Foreign.C.Types
 import           Foreign.C.String
@@ -29,8 +28,6 @@ main = do
   -- -Z on the resulting DB shows no content)
   fp       <- newCString "wagner.adb"
   adb      <- audiodb_create fp (CUInt 0) (CUInt 0) (CUInt 12)
-  l2normed <- audiodb_l2norm adb
-  -- powered  <- audiodb_power adb
 
   datumPtr <- readCSVFeaturesTimes "WandererSceneImplicit" "WandererSceneImplicit_vamp_nnls-chroma_nnls-chroma_chroma.csv"
   inserted <- insertMaybeFeatures adb datumPtr
@@ -38,7 +35,7 @@ main = do
   maybe (return ()) (\d -> free d) datumPtr
 
   features <- featuresFromKey adb "WandererSceneImplicit"
-  maybe (putStrLn "Could not retrieve 'WandererSceneImplicit'") (\f -> do putStrLn "Found 'WandererSceneImplicit'") features
+  maybe (putStrLn "Could not retrieve 'WandererSceneImplicit'") (\f -> do putStrLn $ "Found '" ++ (datum_key f) ++ "'") features
 
   test_readCSVFeatures "WandererSceneImplicit" "WandererSceneImplicit_vamp_nnls-chroma_nnls-chroma_chroma.csv"
 
