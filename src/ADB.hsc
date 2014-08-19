@@ -74,8 +74,8 @@ data ADBQueryRefine = ADBQueryRefine {
 type ADBQueryRefinePtr = Ptr (ADBQueryRefine)
 
 data ADBQueryParameters = ADBQueryParameters {
-  query_parameters_accumulation  :: Int,
-  query_parameters_distance      :: Int,
+  query_parameters_accumulation  :: AccumulationFlag,
+  query_parameters_distance      :: DistanceFlag,
   query_parameters_npoints       :: Int,
   query_parameters_ntracks       :: Int } deriving (Eq, Show)
 type ADBQueryParametersPtr = Ptr (ADBQueryParameters)
@@ -329,18 +329,22 @@ instance Storable ADBQueryParameters where
   sizeOf _ = #{size adb_query_parameters_t}
 
   peek qp = do
-    accumulation' <- fmap fromIntegral (((#peek adb_query_parameters_t, accumulation) qp) :: IO CUInt)
-    distance'     <- fmap fromIntegral (((#peek adb_query_parameters_t, distance) qp) :: IO CUInt)
-    npoints'      <- fmap fromIntegral (((#peek adb_query_parameters_t, npoints) qp) :: IO CUInt)
-    ntracks'      <- fmap fromIntegral (((#peek adb_query_parameters_t, ntracks) qp) :: IO CUInt)
-    return ADBQueryParameters { query_parameters_accumulation = accumulation',
-                                query_parameters_distance     = distance',
+    accFlags''     <- ((#peek adb_query_parameters_t, accumulation) qp) :: IO CUInt
+    let accFlags'  = AccumulationFlag { unAccumulationFlag = accFlags'' }
+
+    distFlags''    <- ((#peek adb_query_parameters_t, distance) qp) :: IO CUInt
+    let distFlags' = DistanceFlag { unDistanceFlag = distFlags'' }
+
+    npoints'       <- fmap fromIntegral (((#peek adb_query_parameters_t, npoints) qp) :: IO CUInt)
+    ntracks'       <- fmap fromIntegral (((#peek adb_query_parameters_t, ntracks) qp) :: IO CUInt)
+    return ADBQueryParameters { query_parameters_accumulation = accFlags',
+                                query_parameters_distance     = distFlags',
                                 query_parameters_npoints      = npoints',
                                 query_parameters_ntracks      = ntracks' }
 
   poke qp (ADBQueryParameters accumulation' distance' npoints' ntracks') = do
-    (#poke adb_query_parameters_t, accumulation) qp accumulation'
-    (#poke adb_query_parameters_t, distance) qp distance'
+    (#poke adb_query_parameters_t, accumulation) qp (unAccumulationFlag accumulation')
+    (#poke adb_query_parameters_t, distance) qp (unDistanceFlag distance')
     (#poke adb_query_parameters_t, npoints) qp npoints'
     (#poke adb_query_parameters_t, ntracks) qp ntracks'
     
@@ -469,7 +473,7 @@ combineHeaderFlags :: [HeaderFlag] -> HeaderFlag
 combineHeaderFlags = HeaderFlag . foldr ((.|.) . unHeaderFlag) 0
 
 -- data Accumulation = Database | PerTrack | OneToOne
-newtype AccumulationFlag = AccumulationFlag { unAccumulationFlag :: CInt } deriving (Eq, Show)
+newtype AccumulationFlag = AccumulationFlag { unAccumulationFlag :: CUInt } deriving (Eq, Show)
 
 #{enum AccumulationFlag, AccumulationFlag
  , databaseFlag = ADB_ACCUMULATION_DB
@@ -481,7 +485,7 @@ combineAccumulationFlags :: [AccumulationFlag] -> AccumulationFlag
 combineAccumulationFlags = AccumulationFlag . foldr ((.|.) . unAccumulationFlag) 0
 
 -- data Distance = DotProduct | EuclideanNormed | Euclidean | KullbackLeiblerDivergence
-newtype DistanceFlag = DistanceFlag { unDistanceFlag :: CInt } deriving (Eq, Show)
+newtype DistanceFlag = DistanceFlag { unDistanceFlag :: CUInt } deriving (Eq, Show)
 
 #{enum DistanceFlag, DistanceFlag
  , dotProductFlag                = ADB_DISTANCE_DOT_PRODUCT
