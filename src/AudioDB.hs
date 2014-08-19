@@ -6,11 +6,15 @@
 -- This module provides a mid-level interface above the basic FFI
 -- bindings.
 
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module AudioDB where
 
 import           ADB
-import           Data.Maybe (isJust)
-import           Foreign (Ptr, peek)
+import           Data.Maybe (isJust, catMaybes)
+import           Control.Exception (throw, Exception)
+import           Data.Typeable (Typeable)
+import           Foreign (Ptr, peek, poke)
 import           Foreign.C.Types
 import           Foreign.Marshal.Utils (new)
 import           Foreign.Marshal.Alloc (alloca)
@@ -29,19 +33,34 @@ closeDB = undefined
 createDB :: FilePath -> (Ptr ADB)
 createDB = undefined
 
-withAudioDB :: (ADBQuerySpec -> ADBResult) -> (Ptr ADB) -> ADBResult
+type Frame = Int
+type Seconds = Double
+type FrameSize = (Frame -> Seconds)
+type FeatureRate = (Seconds -> Frame)
+
+inSeconds :: FrameSize
+inSeconds = fromIntegral
+
+inFrames :: FeatureRate
+inFrames = ceiling
+
+withAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> (Ptr ADB) -> ADBResult
 withAudioDB = undefined
 
-withExistingAudioDB :: (ADBQuerySpec -> ADBResult) -> FilePath -> ADBResult
+withExistingAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> FilePath -> ADBResult
 withExistingAudioDB = undefined
 
-withNewAudioDB :: (ADBQuerySpec -> ADBResult) -> FilePath -> ADBResult
+withExistingROAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> FilePath -> ADBResult
+withExistingROAudioDB = undefined
+
+withNewAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> FilePath -> ADBResult
 withNewAudioDB = undefined
 
 withADBStatus :: (ADBStatus -> IO a) -> (Ptr ADB) -> IO a
 withADBStatus f adb = do
   alloca $ \statusPtr -> do
     res     <- audiodb_status adb statusPtr
+    -- FIXME Handle non-0 res case
     status  <- peek statusPtr
     (f status)
 
@@ -173,90 +192,182 @@ insertMaybeFeatures adb datumPtr = do
     (\p -> do { insertFeatures adb p })
     datumPtr
 
+checkDimensions :: ADBStatus -> ADBDatum -> Bool
+checkDimensions status datum = (status_dim status) == (datum_dim datum)
+
+(|||) :: Maybe a -> b -> Maybe b
+Just _  ||| b = Just b
+Nothing ||| _ = Nothing
+
+(//) :: Maybe a -> a -> a
+Just x  // _ = x
+Nothing // y = y
+
+-- NOTE The audioDB::query function can be pilfered for tips on
+-- implementing query
+
+type RefinementParams = (Maybe ADBKeyList, Maybe ADBKeyList, Maybe Double, Maybe Double, Maybe Double, Maybe Double, Maybe Int, Maybe Int)
+
+combineJustRfnParams :: RefinementParams -> RefinementFlag
+combineJustRfnParams (incl, excl, rad, absThrsh, relThrsh, durRat, qHopSz, iHopSz) =
+  combineRefinementFlags $ catMaybes [(incl     ||| includeKeyListFlag),
+                                      (excl     ||| excludeKeyListFlag),
+                                      (rad      ||| radiusFlag),
+                                      (absThrsh ||| absoluteThresholdFlag),
+                                      (relThrsh ||| relativeThresholdFlag),
+                                      (durRat   ||| durationRatioFlag),
+                                      (qHopSz   ||| hopSizeFlag),
+                                      (iHopSz   ||| hopSizeFlag)]
+
+emptyADBKeyList :: ADBKeyList
+emptyADBKeyList = ADBKeyList { keylist_nkeys = 0, keylist_keys = [] }
+
+data QueryException = QuerySequenceBoundsException Int Int Int
+                    | QueryDimensionsMismatchException Int Int
+                    deriving (Show, Typeable)
+instance Exception QueryException
+
+-- FIXME Maybe we could have some `type`s here to distinguish all
+-- these parameters from each other.
 mkQuery :: ADBDatumPtr   -- query datum
-           -> Int        -- sequence length
-           -> Int        -- sequence start
-           -> QueryIDFlag
-           -> Int        -- accumulation
-           -> Int        -- distance
-           -> Int        -- number of point nearest neighbours
-           -> Int        -- number of tracks
-           -> RefinementFlag
-           -> ADBKeyList -- include
-           -> ADBKeyList -- exclude
-           -> Double     -- radius
-           -> Double     -- absoluate threshold
-           -> Double     -- relative threshold
-           -> Double     -- duration ratio
-           -> Int        -- query hop size
-           -> Int        -- instance hop size
-           -> ADBQuerySpec
+           -> Maybe FeatureRate
+           -> Maybe Seconds    -- sequence length
+           -> Maybe Seconds    -- sequence start
+           -> Maybe QueryIDFlag
+           -> Maybe AccumulationFlag
+           -> Maybe DistanceFlag
+           -> Maybe Int        -- number of point nearest neighbours
+           -> Maybe Int        -- number of tracks
+           -> Maybe ADBKeyList -- include
+           -> Maybe ADBKeyList -- exclude
+           -> Maybe Double     -- radius
+           -> Maybe Double     -- absoluate threshold
+           -> Maybe Double     -- relative threshold
+           -> Maybe Double     -- duration ratio
+           -> Maybe Int        -- query hop size
+           -> Maybe Int        -- instance hop size
+           -> ADBQuerySpecPtr
+           -> IO ()
 
-mkQuery datum sqLen sqStart qidFlgs acc dist ptsNN nTrks rfnFlgs incl excl rad absThrsh relThrsh durRat qHopSz iHopSz =
-  let qid = ADBQueryID { queryid_datum           = datum,
-                         queryid_sequence_length = sqLen,
-                         queryid_flags           = qidFlgs,
-                         queryid_sequence_start  = sqStart }
+mkQuery datum frmToSec sqLen sqStart qidFlgs acc dist ptsNN resultLen incl excl rad absThrsh relThrsh durRat qHopSz iHopSz qPtr = do
+  let fr = (frmToSec // inFrames)
+      qid = ADBQueryID {
+        queryid_datum           = datum,
+        queryid_sequence_length = fr (sqLen // 16),
+        queryid_flags           = (qidFlgs // allowFalsePositivesFlag),
+        queryid_sequence_start  = fr (sqStart // 0) }
 
-      params = ADBQueryParameters { query_parameters_accumulation = acc,
-                                    query_parameters_distance     = dist,
-                                    query_parameters_npoints      = ptsNN,
-                                    query_parameters_ntracks      = nTrks }
+      params = ADBQueryParameters {
+        query_parameters_accumulation = (acc // databaseFlag),
+        query_parameters_distance     = (dist // dotProductFlag),
+        query_parameters_npoints      = (ptsNN // 10),
+        query_parameters_ntracks      = (resultLen // 10) }
 
-      refine = ADBQueryRefine { query_refine_flags              = rfnFlgs,
-                                query_refine_include            = incl,
-                                query_refine_exclude            = excl,
-                                query_refine_radius             = rad,
-                                query_refine_absolute_threshold = absThrsh,
-                                query_refine_relative_threshold = relThrsh,
-                                query_refine_duration_ratio     = durRat,
-                                query_refine_qhopsize           = qHopSz,
-                                query_refine_ihopsize           = iHopSz }
+      rfnFlgs = combineJustRfnParams (incl, excl, rad, absThrsh, relThrsh, durRat, qHopSz, iHopSz)
+      refine = ADBQueryRefine {
+        query_refine_flags              = rfnFlgs,
+        query_refine_include            = (incl // emptyADBKeyList),
+        query_refine_exclude            = (excl // emptyADBKeyList),
+        query_refine_radius             = (rad // 1.0),
+        query_refine_absolute_threshold = (absThrsh // 0),
+        query_refine_relative_threshold = (relThrsh // 0),
+        query_refine_duration_ratio     = (durRat // 0),
+        query_refine_qhopsize           = (qHopSz // 1),
+        query_refine_ihopsize           = (iHopSz // 1) }
+      query = ADBQuerySpec {
+        query_spec_qid    = qid,
+        query_spec_params = params,
+        query_spec_refine = refine }
 
-  in ADBQuerySpec { query_spec_qid    = qid,
-                    query_spec_params = params,
-                    query_spec_refine = refine }
+  d <- peek datum
 
-mkPointQuery :: (Ptr ADB)
-                -> ADBDatumPtr -- query features
-                -> Int         -- number of point nearest neighbours
-                -> ADBQuerySpec
+  let q = if (queryid_sequence_start qid) + (queryid_sequence_length qid) < (datum_nvectors d)
+          then poke qPtr query
+          else throw $ QuerySequenceBoundsException (queryid_sequence_start qid) (queryid_sequence_length qid) (datum_nvectors d)
+  q
+
+-- FIXME It's not obvious how to get a QueryAllocator because there
+-- are no functions that have it as their return type. In fact, it's
+-- just a curried function whose last argument is a
+-- ADBQuerySpecPtr. Could we add some sort of mkUnallocXXXQuery
+-- function?
+type QueryAllocator = (ADBQuerySpecPtr -> IO ())
+
+execQuery :: (Ptr ADB) -> QueryAllocator -> ADBQueryResults
+execQuery adb allocQuery =
+  unsafePerformIO $ alloca $ (\qPtr -> do
+                                 allocQuery qPtr
+                                 q <- peek qPtr
+                                 let datumPtr = (queryid_datum (query_spec_qid q))
+                                 datum <- peek datumPtr
+                                 dimOk <- withADBStatus (\s -> if not (checkDimensions s datum)
+                                                               then throw $ QueryDimensionsMismatchException (status_dim s) (datum_dim datum)
+                                                               else return True) adb
+                                 r <- audiodb_query_spec adb qPtr
+                                 peek r)
+
+-- FIXME You originally planned to have a query spec transformer
+-- between interations. Is there any need for that? It's slightly
+-- complicated in that it would require allocating a new query object
+-- each time.
+multiQuery :: (Ptr ADB)
+              -> QueryAllocator
+              -> (ADBQueryResultsPtr -> IO a)   -- FIXME We're currently discarding the IO a here. We could make it IO (), or we could collect them up a list and return it?
+              -> (ADBQuerySpecPtr -> ADBQueryResultsPtr -> Bool)
+              -> IO ADBQueryResultsPtr
+multiQuery adb allocQuery interleave isFinished =
+  alloca $ (\qPtr -> do
+               let init = audiodb_query_spec adb qPtr
+                   step r = interleave r >> audiodb_query_spec_given_sofar adb qPtr r
+                   iter r = if isFinished qPtr r then return r else step r
+
+               allocQuery qPtr
+               r0 <- init
+               iter r0)
+
+mkPointQuery :: ADBDatumPtr   -- query features
+                -> Int        -- number of point nearest neighbours
+                -> ADBQuerySpecPtr
+                -> IO ()
 mkPointQuery = undefined
 
-mkTrackQuery :: (Ptr ADB)
-                -> ADBDatumPtr -- query features
+mkTrackQuery :: ADBDatumPtr    -- query features
                 -> Int         -- number of point nearest neighbours
                 -> Int         -- number of tracks
-                -> ADBQuerySpec
+                -> ADBQuerySpecPtr
+                -> IO ()
 mkTrackQuery = undefined
 
-mkSequenceQuery :: (Ptr ADB)
-                   -> ADBDatumPtr -- query features
+mkSequenceQuery :: ADBDatumPtr    -- query features
+                   -> FeatureRate
                    -> Int         -- number of point nearest neighbours
                    -> Int         -- number of tracks
-                   -> ADBQuerySpec
-mkSequenceQuery = undefined
+                   -> Seconds     -- sequence start
+                   -> Seconds     -- sequence length
+                   -> ADBQuerySpecPtr
+                   -> IO ()
+mkSequenceQuery datum frmToSec ptsNN resultLen sqLen sqStart qPtr =
+  mkQuery datum (Just frmToSec) (Just sqLen) (Just sqStart) Nothing Nothing Nothing (Just ptsNN) (Just resultLen) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing qPtr
 
-mkNSequenceQuery :: (Ptr ADB)
-                    -> ADBDatumPtr -- query features
-                    -> Int         -- number of point nearest neighbours
-                    -> Int         -- number of tracks
-                    -> ADBQuerySpec
+execSequenceQuery :: (Ptr ADB)
+                     -> ADBDatumPtr -- query features
+                     -> FeatureRate
+                     -> Int         -- number of point nearest neighbours
+                     -> Int         -- number of tracks
+                     -> Seconds     -- sequence start
+                     -> Seconds     -- sequence length
+                     -> ADBQueryResults
+execSequenceQuery adb datum frmToSec ptsNN resultLen sqLen sqStart =
+  execQuery adb (mkSequenceQuery datum frmToSec ptsNN resultLen sqLen sqStart)
+
+mkNSequenceQuery :: ADBDatumPtr  -- query features
+                    -> Int       -- number of point nearest neighbours
+                    -> Int       -- number of tracks
+                    -> ADBQuerySpecPtr
+                    -> IO ()
 mkNSequenceQuery = undefined
 
-mkOneToOneSequenceQuery :: (Ptr ADB)
-                           -> ADBDatumPtr  -- query features
-                           -> ADBQuerySpec
+mkOneToOneSequenceQuery :: ADBDatumPtr  -- query features
+                           -> ADBQuerySpecPtr
+                           -> IO ()
 mkOneToOneSequenceQuery = undefined
-
-query :: (Ptr ADB) -> ADBQuerySpec -> ADBQueryResults
-query = undefined
-
-startQuery :: (Ptr ADB) -> ADBQuerySpec -> Int -> ADBQueryResults
-startQuery = undefined
-
-resumeQuery :: (Ptr ADB) -> ADBQuerySpec -> ADBQueryResults -> Int -> ADBQueryResults
-resumeQuery = undefined
-
-completeQuery :: (Ptr ADB) -> ADBQuerySpec -> ADBQueryResults -> ADBQueryResults
-completeQuery = undefined

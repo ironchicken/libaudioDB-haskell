@@ -536,10 +536,10 @@ foreign import ccall unsafe "audioDB_API.h audiodb_insert_reference"
   audiodb_insert_reference :: (Ptr ADB) -> ADBReferencePtr -> IO CInt
 
 foreign import ccall unsafe "audioDB_API.h audiodb_query_spec"
-  audiodb_query_spec :: (Ptr ADB) -> ADBQuerySpecPtr -> IO CInt
+  audiodb_query_spec :: (Ptr ADB) -> ADBQuerySpecPtr -> IO ADBQueryResultsPtr
 
 foreign import ccall unsafe "audioDB_API.h audiodb_query_spec_given_sofar"
-  audiodb_audiodb_query_spec_given_sofar :: (Ptr ADB) -> ADBQuerySpecPtr -> ADBQueryResultsPtr -> IO ADBQueryResultsPtr
+  audiodb_query_spec_given_sofar :: (Ptr ADB) -> ADBQuerySpecPtr -> ADBQueryResultsPtr -> IO ADBQueryResultsPtr
 
 foreign import ccall unsafe "audioDB_API.h audiodb_query_free_results"
   audiodb_query_free_results :: (Ptr ADB) -> ADBQuerySpecPtr -> ADBQueryResultsPtr -> IO CInt
