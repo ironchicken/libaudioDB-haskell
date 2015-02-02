@@ -66,7 +66,7 @@ data ADBResult = ADBResult {
   result_ikey   :: String,
   result_qpos   :: Int,
   result_ipos   :: Int,
-  result_dist   :: Double } deriving (Eq, Show)
+  result_dist   :: Double } deriving (Eq)
 type ADBResultPtr = Ptr (ADBResult)
 
 data ADBKeyList = ADBKeyList {
@@ -95,7 +95,7 @@ type ADBQueryParametersPtr = Ptr (ADBQueryParameters)
 
 data ADBQueryResults = ADBQueryResults {
   query_results_nresults :: Int,
-  query_results_results  :: [ADBResult] } deriving (Eq, Show)
+  query_results_results  :: [ADBResult] } deriving (Eq)
 type ADBQueryResultsPtr = Ptr (ADBQueryResults)
 
 data ADBQueryID = ADBQueryID {
@@ -268,6 +268,16 @@ instance Storable ADBResult where
     (#poke adb_result_t, ipos) r ipos'
     (#poke adb_result_t, dist) r dist'
 
+instance Show ADBResult where
+  show r =
+    q ++ " (@ " ++ (show qp) ++ ") is in track " ++ k ++ " @ " ++ (show pos) ++ "; distance is " ++ (show dist)
+    where
+      q    = (result_qkey r)
+      qp   = (result_qpos r)
+      k    = (result_ikey r)
+      pos  = (result_ipos r)
+      dist = (result_dist r)
+
 splitCStrL :: Ptr CChar -> Int -> IO [String]
 splitCStrL p n = splt p []
   where
@@ -373,6 +383,13 @@ instance Storable ADBQueryResults where
                              query_results_results  = results' }
 
   poke = error "ADBQueryResults is read-only"
+
+instance Show ADBQueryResults where
+  show r =
+    (show n) ++ " hits:\n" ++ unlines (map show results)
+    where
+      n       = (query_results_nresults r)
+      results = (query_results_results r)
 
 instance Storable ADBQueryID where
   alignment _ = alignment (undefined :: CDouble)
