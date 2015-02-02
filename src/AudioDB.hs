@@ -262,8 +262,8 @@ mkQuery :: ADBDatumPtr   -- query datum
            -> ADBQuerySpecPtr
            -> IO ()
 
-mkQuery datum frmToSec sqLen sqStart qidFlgs acc dist ptsNN resultLen incl excl rad absThrsh relThrsh durRat qHopSz iHopSz qPtr = do
-  let fr = (frmToSec // inFrames)
+mkQuery datum secToFrames sqLen sqStart qidFlgs acc dist ptsNN resultLen incl excl rad absThrsh relThrsh durRat qHopSz iHopSz qPtr = do
+  let fr = (secToFrames // inFrames)
       qid = ADBQueryID {
         queryid_datum           = datum,
         queryid_sequence_length = fr (sqLen // 16),
@@ -357,10 +357,12 @@ mkSequenceQuery :: ADBDatumPtr    -- query features
                    -> Int         -- number of tracks
                    -> Seconds     -- sequence start
                    -> Seconds     -- sequence length
+                   -> Maybe DistanceFlag
+                   -> Maybe Double -- absolute power threshold
                    -> ADBQuerySpecPtr
                    -> IO ()
-mkSequenceQuery datum frmToSec ptsNN resultLen sqLen sqStart qPtr =
-  mkQuery datum (Just frmToSec) (Just sqLen) (Just sqStart) Nothing Nothing Nothing (Just ptsNN) (Just resultLen) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing qPtr
+mkSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh qPtr =
+  mkQuery datum (Just secToFrames) (Just sqLen) (Just sqStart) Nothing (Just perTrackFlag) (dist ||| euclideanNormedFlag) (Just ptsNN) (Just resultLen) Nothing Nothing Nothing (absThrsh ||| 0) Nothing Nothing Nothing Nothing qPtr
 
 execSequenceQuery :: (Ptr ADB)
                      -> ADBDatumPtr -- query features
@@ -370,8 +372,8 @@ execSequenceQuery :: (Ptr ADB)
                      -> Seconds     -- sequence start
                      -> Seconds     -- sequence length
                      -> ADBQueryResults
-execSequenceQuery adb datum frmToSec ptsNN resultLen sqLen sqStart =
-  execQuery adb (mkSequenceQuery datum frmToSec ptsNN resultLen sqLen sqStart)
+execSequenceQuery adb datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh =
+  execQuery adb (mkSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh)
 
 mkNSequenceQuery :: ADBDatumPtr  -- query features
                     -> Int       -- number of point nearest neighbours
