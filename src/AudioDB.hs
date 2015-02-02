@@ -371,6 +371,8 @@ execSequenceQuery :: (Ptr ADB)
                      -> Int         -- number of tracks
                      -> Seconds     -- sequence start
                      -> Seconds     -- sequence length
+                     -> Maybe DistanceFlag
+                     -> Maybe Double -- absolute power threshold
                      -> ADBQueryResults
 execSequenceQuery adb datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh =
   execQuery adb (mkSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh)
