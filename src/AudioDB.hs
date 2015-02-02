@@ -378,12 +378,37 @@ execSequenceQuery adb datum secToFrames ptsNN resultLen sqLen sqStart dist absTh
   execQuery adb (mkSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh)
 
 mkNSequenceQuery :: ADBDatumPtr  -- query features
-                    -> Int       -- number of point nearest neighbours
-                    -> Int       -- number of tracks
+                    -> FeatureRate
+                    -> Int         -- number of point nearest neighbours
+                    -> Int         -- number of tracks
+                    -> Seconds     -- sequence start
+                    -> Seconds     -- sequence length
+                    -> Maybe DistanceFlag
+                    -> Maybe Double -- absolute power threshold
                     -> ADBQuerySpecPtr
                     -> IO ()
-mkNSequenceQuery = undefined
+mkNSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh qPtr =
+  -- FIXME How do we actually implement nsequence query? In audioDB
+  -- the only obvious difference is the type of reporter, but I don't
+  -- think that means anything in the library. I've wondered whether
+  -- the one_to_one accumulator is the thing. It needs a radius rather
+  -- than a pointsNN argument, but from audioDB it just returns lots
+  -- of 0 hits.
+  mkQuery datum (Just secToFrames) (Just sqLen) (Just sqStart) Nothing (Just oneToOneFlag) (dist ||| euclideanNormedFlag) (Just ptsNN) (Just resultLen) Nothing Nothing Nothing (absThrsh ||| 0) Nothing Nothing Nothing Nothing qPtr
 
+execNSequenceQuery :: (Ptr ADB)
+                      -> ADBDatumPtr -- query features
+                      -> FeatureRate
+                      -> Int         -- number of point nearest neighbours
+                      -> Int         -- number of tracks
+                      -> Seconds     -- sequence start
+                      -> Seconds     -- sequence length
+                      -> Maybe DistanceFlag
+                      -> Maybe Double -- absolute power threshold
+                      -> ADBQueryResults
+execNSequenceQuery adb datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh =
+  execQuery adb (mkNSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh)
+  
 mkOneToOneSequenceQuery :: ADBDatumPtr  -- query features
                            -> ADBQuerySpecPtr
                            -> IO ()
