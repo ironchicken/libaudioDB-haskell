@@ -1,6 +1,7 @@
 name: AudioDB
 version: 0.1
 synopsis: Bindings to the libaudioDB feature database
+homepage: https://github.com/TransformingMusicology/libaudioDB-haskell
 author: Richard Lewis
 build-type: Simple
 cabal-version: >= 1.8
