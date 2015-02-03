@@ -41,7 +41,7 @@ test_query adbFile queryFile qPowersFile start len = do
   maybe (putStrLn $ "Could not parse " ++ queryFile)
     (\p -> do
         putStrLn $ "Parsed " ++ queryFile
-        let res = execSequenceQuery adb p (floor . (* framesPerSecond)) 1 25 start len (Just euclideanNormedFlag) Nothing
+        res <- execSequenceQuery adb p (floor . (* framesPerSecond)) 1 25 start len (Just euclideanNormedFlag) Nothing
         putStrLn (show res)
     )
     queryFeatures

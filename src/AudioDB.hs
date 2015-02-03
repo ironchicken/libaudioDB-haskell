@@ -306,18 +306,20 @@ mkQuery datum secToFrames sqLen sqStart qidFlgs acc dist ptsNN resultLen incl ex
 -- function?
 type QueryAllocator = (ADBQuerySpecPtr -> IO ())
 
-execQuery :: (Ptr ADB) -> QueryAllocator -> ADBQueryResults
+execQuery :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
 execQuery adb allocQuery =
-  unsafePerformIO $ alloca $ (\qPtr -> do
-                                 allocQuery qPtr
-                                 q <- peek qPtr
-                                 let datumPtr = (queryid_datum (query_spec_qid q))
-                                 datum <- peek datumPtr
-                                 dimOk <- withADBStatus (\s -> if not (checkDimensions s datum)
-                                                               then throw $ QueryDimensionsMismatchException (status_dim s) (datum_dim datum)
-                                                               else return True) adb
-                                 r <- audiodb_query_spec adb qPtr
-                                 peek r)
+  alloca $ (\qPtr -> do
+               allocQuery qPtr
+               q <- peek qPtr
+               let datumPtr = (queryid_datum (query_spec_qid q))
+               datum <- peek datumPtr
+               dimOk <- withADBStatus (\s -> if not (checkDimensions s datum)
+                                             then throw $ QueryDimensionsMismatchException (status_dim s) (datum_dim datum)
+                                             else return True) adb
+               r <- audiodb_query_spec adb qPtr
+               peek r)
+
+type QueryTransformer = (ADBQuerySpec -> ADBQuerySpec)
 
 -- FIXME You originally planned to have a query spec transformer
 -- between interations. Is there any need for that? It's slightly
@@ -373,7 +375,7 @@ execSequenceQuery :: (Ptr ADB)
                      -> Seconds     -- sequence length
                      -> Maybe DistanceFlag
                      -> Maybe Double -- absolute power threshold
-                     -> ADBQueryResults
+                     -> IO ADBQueryResults
 execSequenceQuery adb datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh =
   execQuery adb (mkSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh)
 
@@ -405,7 +407,7 @@ execNSequenceQuery :: (Ptr ADB)
                       -> Seconds     -- sequence length
                       -> Maybe DistanceFlag
                       -> Maybe Double -- absolute power threshold
-                      -> ADBQueryResults
+                      -> IO ADBQueryResults
 execNSequenceQuery adb datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh =
   execQuery adb (mkNSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh)
 
