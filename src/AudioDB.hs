@@ -325,8 +325,6 @@ execQuery adb allocQuery =
                r <- audiodb_query_spec adb qPtr
                peek r)
 
-type QueryTransformer = (ADBQuerySpec -> ADBQuerySpec)
-
 -- FIXME You originally planned to have a query spec transformer
 -- between interations. Is there any need for that? It's slightly
 -- complicated in that it would require allocating a new query object
