@@ -25,6 +25,7 @@ module AudioDB where
 
 import           ADB
 import           Data.Maybe (isJust, catMaybes)
+import           Control.Monad (when)
 import           Control.Exception (throw, Exception)
 import           Data.Typeable (Typeable)
 import           Foreign (Ptr, peek, poke)
@@ -73,7 +74,7 @@ withADBStatus :: (ADBStatus -> IO a) -> (Ptr ADB) -> IO a
 withADBStatus f adb = do
   alloca $ \statusPtr -> do
     res     <- audiodb_status adb statusPtr
-    -- FIXME Handle non-0 res case
+    when (res /= 0) (throw DBStatusException)
     status  <- peek statusPtr
     (f status)
 
@@ -239,6 +240,10 @@ data QueryException = QuerySequenceBoundsException Int Int Int
                     | QueryDimensionsMismatchException Int Int
                     deriving (Show, Typeable)
 instance Exception QueryException
+
+data DatabaseException = DBStatusException
+                       deriving (Show, Typeable)
+instance Exception DatabaseException
 
 -- FIXME Maybe we could have some `type`s here to distinguish all
 -- these parameters from each other.
