@@ -206,8 +206,12 @@ insertMaybeFeatures adb datumPtr = do
     (\p -> do { insertFeatures adb p })
     datumPtr
 
-checkDimensions :: ADBStatus -> ADBDatum -> Bool
-checkDimensions status datum = (status_dim status) == (datum_dim datum)
+checkDimensions :: (Ptr ADB) -> ADBDatum -> IO Bool
+checkDimensions adb datum =
+  withADBStatus (\s -> if not (checkDim s datum)
+                       then throw $ QueryDimensionsMismatchException (status_dim s) (datum_dim datum)
+                       else return True) adb
+  where checkDim s d = (status_dim s) == (datum_dim d)
 
 (|||) :: Maybe a -> b -> Maybe b
 Just _  ||| b = Just b
@@ -315,12 +319,9 @@ execQuery :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
 execQuery adb allocQuery =
   alloca $ (\qPtr -> do
                allocQuery qPtr
-               q <- peek qPtr
-               let datumPtr = (queryid_datum (query_spec_qid q))
-               datum <- peek datumPtr
-               dimOk <- withADBStatus (\s -> if not (checkDimensions s datum)
-                                             then throw $ QueryDimensionsMismatchException (status_dim s) (datum_dim datum)
-                                             else return True) adb
+               putStrLn $ "Allocated query " ++ (show qPtr)
+               datum <- peek qPtr >>= return . queryid_datum . query_spec_qid >>= peek
+               dimOk <- checkDimensions adb datum
                r <- audiodb_query_spec adb qPtr
                peek r)
 
@@ -342,6 +343,14 @@ multiQuery adb allocQuery interleave isFinished =
                    iter r = if isFinished qPtr r then return r else step r
 
                allocQuery qPtr
+
+               -- Check the dimensions of the query match the
+               -- dimensions of the database
+               putStrLn $ "Allocated query " ++ (show qPtr)
+
+               datum <- peek qPtr >>= return . queryid_datum . query_spec_qid >>= peek
+               dimOk <- checkDimensions adb datum
+
                r0 <- init
                iter r0)
 
