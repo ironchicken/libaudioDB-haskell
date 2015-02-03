@@ -408,7 +408,7 @@ execNSequenceQuery :: (Ptr ADB)
                       -> ADBQueryResults
 execNSequenceQuery adb datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh =
   execQuery adb (mkNSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh)
-  
+
 mkOneToOneSequenceQuery :: ADBDatumPtr  -- query features
                            -> ADBQuerySpecPtr
                            -> IO ()

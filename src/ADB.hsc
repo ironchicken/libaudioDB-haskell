@@ -322,7 +322,7 @@ instance Storable ADBQueryRefine where
     (#poke adb_query_refine_t, duration_ratio) qr duration_ratio'
     (#poke adb_query_refine_t, qhopsize) qr qhopsize'
     (#poke adb_query_refine_t, ihopsize) qr ihopsize'
-                            
+
 instance Storable ADBQueryParameters where
   alignment _ = alignment (undefined :: CDouble)
   sizeOf _ = #{size adb_query_parameters_t}
@@ -346,7 +346,7 @@ instance Storable ADBQueryParameters where
     (#poke adb_query_parameters_t, distance) qp (unDistanceFlag distance')
     (#poke adb_query_parameters_t, npoints) qp npoints'
     (#poke adb_query_parameters_t, ntracks) qp ntracks'
-    
+
 instance Storable ADBQueryResults where
   alignment _ = alignment (undefined :: CDouble)
   sizeOf _ = #{size adb_query_results_t}
@@ -438,7 +438,7 @@ instance Storable ADBLisztResults where
 -- class Flag a where
 --   combineFlags :: [a] -> a
 --   combineFlags = Flag . foldr ((.|.) . cInt) 0
-  
+
 --   cInt :: a -> CInt
 
 newtype QueryIDFlag = QueryIDFlag { unQueryIDFlag :: CUInt }
