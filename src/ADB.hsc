@@ -132,8 +132,7 @@ instance Storable ADBDatum where
 
     dim' <- fmap fromIntegral (((#peek adb_datum_t, dim) d) :: IO CUInt)
 
-    keyPtr <- ((#peek adb_datum_t, key) d) :: IO CString
-    key'   <- peekCString keyPtr
+    key' <- (#peek adb_datum_t, key) d >>= peekCString
 
     dataField <- ((#peek adb_datum_t, data) d) :: IO (Ptr Double)
     dataPtr   <- newForeignPtr_ dataField
@@ -158,8 +157,7 @@ instance Storable ADBDatum where
     (#poke adb_datum_t, nvectors) d nv'
     (#poke adb_datum_t, dim) d dim'
 
-    key'' <- newCString key'
-    (#poke adb_datum_t, key) d key''
+    newCString key' >>= (#poke adb_datum_t, key) d
 
     DV.unsafeWith data' (\ptrData -> (#poke adb_datum_t, data) d ptrData)
 
@@ -177,17 +175,10 @@ instance Storable ADBReference where
   sizeOf _ = #{size adb_reference_t}
 
   peek r = do
-    featuresPtr <- ((#peek adb_reference_t, features) r) :: IO CString
-    features'   <- peekCString featuresPtr
-
-    powerPtr <- ((#peek adb_reference_t, power) r) :: IO CString
-    power'   <- peekCString powerPtr
-
-    keyPtr <- ((#peek adb_reference_t, key) r) :: IO CString
-    key'   <- peekCString keyPtr
-
-    timesPtr <- ((#peek adb_reference_t, times) r) :: IO CString
-    times'   <- peekCString timesPtr
+    features' <- (#peek adb_reference_t, features) r >>= peekCString
+    power'    <- (#peek adb_reference_t, power) r    >>= peekCString
+    key'      <- (#peek adb_reference_t, key) r      >>= peekCString
+    times'    <- (#peek adb_reference_t, times) r    >>= peekCString
 
     return ADBReference { reference_features = features',
                           reference_power    = power',
@@ -195,17 +186,10 @@ instance Storable ADBReference where
                           reference_times    = times' }
 
   poke r (ADBReference features' power' key' times') = do
-    features'' <- newCString features'
-    (#poke adb_reference_t, features) r features''
-
-    power'' <- newCString power'
-    (#poke adb_reference_t, power) r power''
-
-    key'' <- newCString key'
-    (#poke adb_reference_t, key) r key''
-
-    times'' <- newCString times'
-    (#poke adb_reference_t, times) r times''
+    newCString features' >>= (#poke adb_reference_t, features) r
+    newCString power'    >>= (#poke adb_reference_t, power) r
+    newCString key'      >>= (#poke adb_reference_t, key) r
+    newCString times'    >>= (#poke adb_reference_t, times) r
 
 instance Storable ADBStatus where
   alignment _ = alignment (undefined :: CDouble)
@@ -242,11 +226,8 @@ instance Storable ADBResult where
   sizeOf _ = #{size adb_result_t}
 
   peek r = do
-    qkeyPtr <- ((#peek adb_result_t, qkey) r) :: IO CString
-    qkey'   <- peekCString qkeyPtr
-
-    ikeyPtr <- ((#peek adb_result_t, ikey) r) :: IO CString
-    ikey'   <- peekCString ikeyPtr
+    qkey' <- (#peek adb_result_t, qkey) r >>= peekCString
+    ikey' <- (#peek adb_result_t, ikey) r >>= peekCString
 
     qpos' <- fmap fromIntegral (((#peek adb_result_t, qpos) r) :: IO CUInt)
     ipos' <- fmap fromIntegral (((#peek adb_result_t, ipos) r) :: IO CUInt)
@@ -258,11 +239,8 @@ instance Storable ADBResult where
                        result_dist = dist' }
 
   poke r (ADBResult qkey' ikey' qpos' ipos' dist') = do
-    qkey'' <- newCString qkey'
-    (#poke adb_result_t, qkey) r qkey''
-
-    ikey'' <- newCString ikey'
-    (#poke adb_result_t, ikey) r ikey''
+    newCString qkey' >>= (#poke adb_result_t, qkey) r
+    newCString ikey' >>= (#poke adb_result_t, ikey) r
 
     (#poke adb_result_t, qpos) r qpos'
     (#poke adb_result_t, ipos) r ipos'
@@ -300,16 +278,14 @@ instance Storable ADBKeyList where
   peek kl = do
     nkeys' <- fmap fromIntegral (((#peek adb_keylist_t, nkeys) kl) :: IO CUInt)
 
-    keysPtr <- ((#peek adb_keylist_t, keys) kl) :: IO (Ptr CChar)
-    keys'   <- splitCStrL keysPtr nkeys'
+    keys' <- (#peek adb_keylist_t, keys) kl >>= (\c -> splitCStrL c nkeys')
 
     return ADBKeyList { keylist_nkeys = nkeys',
                         keylist_keys  = keys' }
 
   poke kl (ADBKeyList nkeys' keys') = do
     (#poke adb_keylist_t, nkeys) kl nkeys'
-    keys'' <- joinCStrL keys'
-    (#poke adb_keylist_t, keys) kl keys''
+    joinCStrL keys' >>= (#poke adb_keylist_t, keys) kl
 
 instance Storable ADBQueryRefine where
   alignment _ = alignment (undefined :: CDouble)
@@ -376,9 +352,8 @@ instance Storable ADBQueryResults where
   sizeOf _ = #{size adb_query_results_t}
 
   peek qr = do
-    nresults'  <- fmap fromIntegral (((#peek adb_query_results_t, nresults) qr) :: IO CUInt)
-    resultsPtr <- (#peek adb_query_results_t, results) qr
-    results'   <- peekArray nresults' resultsPtr--(#peek adb_query_results_t, results) qr
+    nresults' <- fmap fromIntegral (((#peek adb_query_results_t, nresults) qr) :: IO CUInt)
+    results'  <- (#peek adb_query_results_t, results) qr >>= peekArray nresults'
     return ADBQueryResults { query_results_nresults = nresults',
                              query_results_results  = results' }
 
@@ -436,8 +411,7 @@ instance Storable ADBTrackEntry where
   peek te = do
     nvectors' <- fmap fromIntegral (((#peek adb_track_entry_t, nvectors) te) :: IO CUInt)
 
-    keyPtr <- ((#peek adb_track_entry_t, key) te) :: IO CString
-    key'   <- peekCString keyPtr
+    key' <- (#peek adb_track_entry_t, key) te >>= peekCString
 
     return ADBTrackEntry { track_entry_nvectors = nvectors',
                            track_entry_key      = key' }
@@ -445,17 +419,15 @@ instance Storable ADBTrackEntry where
   poke te (ADBTrackEntry nvectors' key') = do
     (#poke adb_track_entry_t, nvectors) te nvectors'
 
-    key'' <- newCString key'
-    (#poke adb_track_entry_t, key) te key''
+    newCString key' >>= (#poke adb_track_entry_t, key) te
 
 instance Storable ADBLisztResults where
   alignment _ = alignment (undefined :: CDouble)
   sizeOf _ = #{size adb_liszt_results_t}
 
   peek lr = do
-    nresults'  <- fmap fromIntegral (((#peek adb_liszt_results_t, nresults) lr) :: IO CUInt)
-    entriesPtr <- (#peek adb_liszt_results_t, entries) lr
-    entries'   <- peekArray nresults' entriesPtr
+    nresults' <- fmap fromIntegral (((#peek adb_liszt_results_t, nresults) lr) :: IO CUInt)
+    entries'  <- (#peek adb_liszt_results_t, entries) lr >>= peekArray nresults'
     return ADBLisztResults { liszt_results_nresults = nresults',
                              liszt_results_entries  = entries' }
 
