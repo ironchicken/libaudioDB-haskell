@@ -325,13 +325,7 @@ withQuery adb allocQuery f =
 
 execQuery :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
 execQuery adb allocQuery =
-  alloca $ (\qPtr -> do
-               allocQuery qPtr
-               putStrLn $ "Allocated query " ++ (show qPtr)
-               datum <- peek qPtr >>= return . queryid_datum . query_spec_qid >>= peek
-               dimOk <- checkDimensions adb datum
-               r <- audiodb_query_spec adb qPtr
-               peek r)
+  withQuery adb allocQuery (\qPtr -> do { r <- audiodb_query_spec adb qPtr; peek r >>= return })
 
 -- FIXME You originally planned to have a query spec transformer
 -- between interations. Is there any need for that? It's slightly
