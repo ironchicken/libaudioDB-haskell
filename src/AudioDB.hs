@@ -315,6 +315,14 @@ mkQuery datum secToFrames sqLen sqStart qidFlgs acc dist ptsNN resultLen incl ex
 -- function?
 type QueryAllocator = (ADBQuerySpecPtr -> IO ())
 
+withQuery :: (Ptr ADB) -> QueryAllocator -> (ADBQuerySpecPtr -> IO a) -> IO a
+withQuery adb allocQuery f =
+  alloca (\qPtr -> do
+             allocQuery qPtr
+             datum <- peek qPtr >>= return . queryid_datum . query_spec_qid >>= peek
+             dimOk <- checkDimensions adb datum
+             (f qPtr))
+
 execQuery :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
 execQuery adb allocQuery =
   alloca $ (\qPtr -> do
