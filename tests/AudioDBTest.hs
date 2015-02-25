@@ -68,24 +68,36 @@ test_query adbFile queryFile qPowersFile start len = do
     )
     queryFeatures
 
+db_file :: String
+db_file = undefined
+
+test_features_name :: String
+test_features_name = undefined
+
+test_features_file :: String
+test_features_file = undefined
+
+test_power_features_file :: String
+test_power_features_file = undefined
+
 main :: IO ()
 main = do
   -- FIXME If you reverse the sequence of insertCSVFeatures and
   -- readCSVFeatures, the insert seems to be ineffective (i.e. audioDB
   -- -Z on the resulting DB shows no content)
-  -- fp       <- newCString "wagner.adb"
+  -- fp       <- newCString db_file
   -- adb      <- audiodb_create fp (CUInt 0) (CUInt 0) (CUInt 12)
 
-  -- datumPtr <- readCSVFeaturesTimes "WandererSceneImplicit" "WandererSceneImplicit_vamp_nnls-chroma_nnls-chroma_chroma.csv"
+  -- datumPtr <- readCSVFeaturesTimes test_features_name test_features_file
   -- inserted <- insertMaybeFeatures adb datumPtr
-  -- putStrLn $ "Inserted 'WandererSceneImplicit': " ++ (show inserted)
+  -- putStrLn $ "Inserted '" ++ test_features_name ++ "': " ++ (show inserted)
   -- maybe (return ()) (\d -> free d) datumPtr
 
-  -- features <- featuresFromKey adb "WandererSceneImplicit"
-  -- maybe (putStrLn "Could not retrieve 'WandererSceneImplicit'") (\f -> do putStrLn $ "Found '" ++ (datum_key f) ++ "'") features
+  -- features <- featuresFromKey adb test_features_name
+  -- maybe (putStrLn ("Could not retrieve '" ++ test_features_name ++ "'")) (\f -> do putStrLn $ "Found '" ++ (datum_key f) ++ "'") features
 
-  -- -- test_readCSVFeatures "WandererSceneImplicit" "WandererSceneImplicit_vamp_nnls-chroma_nnls-chroma_chroma.csv"
+  -- test_readCSVFeatures test_features_name test_features_file
 
-  test_query "parsifal_chroma.adb" "chester_16_chroma.csv" "chester_16_power.csv" 8 11
+  -- test_query db_file test_features_file test_power_features_file query_seq_start query_seq_length
 
   putStrLn "Done."
