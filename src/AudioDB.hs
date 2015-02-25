@@ -344,6 +344,14 @@ execQuery :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
 execQuery adb allocQuery =
   withQueryPtr adb allocQuery (\qPtr -> do { r <- audiodb_query_spec adb qPtr; peek r >>= return })
 
+withResults :: ADBQueryResultsPtr -> (ADBQueryResults -> IO a) -> IO a
+withResults rPtr f = do
+  r <- peek rPtr
+  (f r)
+
+applyResults :: (ADBQueryResults -> IO a) -> ADBQueryResultsPtr -> IO a
+applyResults f rPtr = withResults rPtr f
+
 -- FIXME You originally planned to have a query spec transformer
 -- between interations. Is there any need for that? It's slightly
 -- complicated in that it would require allocating a new query object
