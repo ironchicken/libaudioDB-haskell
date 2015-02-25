@@ -5,6 +5,7 @@ import           AudioDB
 import           Foreign
 import           Foreign.C.Types
 import           Foreign.C.String
+import           Numeric
 import qualified Data.Vector.Storable as V
 
 test_readCSVFeatures :: String -> FilePath -> IO ()
@@ -32,6 +33,27 @@ framesPerSecond = sr / ss
   where sr = fromIntegral sample_rate
         ss = fromIntegral step_size
 
+framesToSeconds :: FrameSize
+framesToSeconds f = (fromIntegral f) / framesPerSecond
+
+showResults :: ADBQueryResults -> String
+showResults r =
+  (show n) ++ " hits:\n" ++ unlines (map showResult results)
+  where
+    n       = (query_results_nresults r)
+    results = (query_results_results r)
+
+showResult :: ADBResult -> String
+showResult r =
+  q ++ " (@ " ++ (qp ") is in track ") ++ k ++ " @ " ++ (pos "; distance is ") ++ (dist "")
+  where
+    q    = (result_qkey r)
+    qp   = showFFloat nd (framesToSeconds (result_qpos r))
+    k    = (result_ikey r)
+    pos  = showFFloat nd (framesToSeconds (result_ipos r))
+    dist = showFFloat nd ((result_dist r))
+    nd   = Just 2
+
 test_query :: FilePath -> FilePath -> FilePath -> Seconds -> Seconds -> IO ()
 test_query adbFile queryFile qPowersFile start len = do
   adbFN  <- newCString adbFile
@@ -42,7 +64,7 @@ test_query adbFile queryFile qPowersFile start len = do
     (\p -> do
         putStrLn $ "Parsed " ++ queryFile
         res <- execSequenceQuery adb p (floor . (* framesPerSecond)) 1 25 start len (Just euclideanNormedFlag) Nothing
-        putStrLn (show res)
+        putStrLn (showResults res)
     )
     queryFeatures
 
