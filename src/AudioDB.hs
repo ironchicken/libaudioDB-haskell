@@ -255,8 +255,8 @@ instance Exception DatabaseException
 -- these parameters from each other.
 mkQuery :: ADBDatumPtr   -- query datum
            -> Maybe FeatureRate
-           -> Maybe Seconds    -- sequence length
            -> Maybe Seconds    -- sequence start
+           -> Maybe Seconds    -- sequence length
            -> Maybe QueryIDFlag
            -> Maybe AccumulationFlag
            -> Maybe DistanceFlag
@@ -273,7 +273,7 @@ mkQuery :: ADBDatumPtr   -- query datum
            -> ADBQuerySpecPtr
            -> IO ()
 
-mkQuery datum secToFrames sqLen sqStart qidFlgs acc dist ptsNN resultLen incl excl rad absThrsh relThrsh durRat qHopSz iHopSz qPtr = do
+mkQuery datum secToFrames sqStart sqLen qidFlgs acc dist ptsNN resultLen incl excl rad absThrsh relThrsh durRat qHopSz iHopSz qPtr = do
   let fr = (secToFrames // inFrames)
       qid = ADBQueryID {
         queryid_datum           = datum,
@@ -379,8 +379,8 @@ mkSequenceQuery :: ADBDatumPtr    -- query features
                    -> Maybe Double -- absolute power threshold
                    -> ADBQuerySpecPtr
                    -> IO ()
-mkSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh qPtr =
-  mkQuery datum (Just secToFrames) (Just sqLen) (Just sqStart) Nothing (Just perTrackFlag) (dist ||| euclideanNormedFlag) (Just ptsNN) (Just resultLen) Nothing Nothing Nothing (absThrsh ||| 0) Nothing Nothing Nothing Nothing qPtr
+mkSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh qPtr =
+  mkQuery datum (Just secToFrames) (Just sqStart) (Just sqLen) Nothing (Just perTrackFlag) (dist ||| euclideanNormedFlag) (Just ptsNN) (Just resultLen) Nothing Nothing Nothing (absThrsh ||| 0) Nothing Nothing Nothing Nothing qPtr
 
 execSequenceQuery :: (Ptr ADB)
                      -> ADBDatumPtr -- query features
@@ -392,8 +392,8 @@ execSequenceQuery :: (Ptr ADB)
                      -> Maybe DistanceFlag
                      -> Maybe Double -- absolute power threshold
                      -> IO ADBQueryResults
-execSequenceQuery adb datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh =
-  execQuery adb (mkSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh)
+execSequenceQuery adb datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh =
+  execQuery adb (mkSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh)
 
 mkNSequenceQuery :: ADBDatumPtr  -- query features
                     -> FeatureRate
@@ -405,14 +405,14 @@ mkNSequenceQuery :: ADBDatumPtr  -- query features
                     -> Maybe Double -- absolute power threshold
                     -> ADBQuerySpecPtr
                     -> IO ()
-mkNSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh qPtr =
+mkNSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh qPtr =
   -- FIXME How do we actually implement nsequence query? In audioDB
   -- the only obvious difference is the type of reporter, but I don't
   -- think that means anything in the library. I've wondered whether
   -- the one_to_one accumulator is the thing. It needs a radius rather
   -- than a pointsNN argument, but from audioDB it just returns lots
   -- of 0 hits.
-  mkQuery datum (Just secToFrames) (Just sqLen) (Just sqStart) Nothing (Just oneToOneFlag) (dist ||| euclideanNormedFlag) (Just ptsNN) (Just resultLen) Nothing Nothing Nothing (absThrsh ||| 0) Nothing Nothing Nothing Nothing qPtr
+  mkQuery datum (Just secToFrames) (Just sqStart) (Just sqLen) Nothing (Just oneToOneFlag) (dist ||| euclideanNormedFlag) (Just ptsNN) (Just resultLen) Nothing Nothing Nothing (absThrsh ||| 0) Nothing Nothing Nothing Nothing qPtr
 
 execNSequenceQuery :: (Ptr ADB)
                       -> ADBDatumPtr -- query features
@@ -424,8 +424,8 @@ execNSequenceQuery :: (Ptr ADB)
                       -> Maybe DistanceFlag
                       -> Maybe Double -- absolute power threshold
                       -> IO ADBQueryResults
-execNSequenceQuery adb datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh =
-  execQuery adb (mkNSequenceQuery datum secToFrames ptsNN resultLen sqLen sqStart dist absThrsh)
+execNSequenceQuery adb datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh =
+  execQuery adb (mkNSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh)
 
 mkOneToOneSequenceQuery :: ADBDatumPtr  -- query features
                            -> ADBQuerySpecPtr
