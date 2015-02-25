@@ -340,6 +340,27 @@ withQuery adb allocQuery f =
 applyQuery :: (Ptr ADB) -> (ADBQuerySpec -> IO a) -> QueryAllocator -> IO a
 applyQuery adb f allocQuery = withQuery adb allocQuery f
 
+-- A 'detached query' is a query that's not associated with an
+-- ADB. It's used for query manipulation.
+withDetachedQueryPtr :: QueryAllocator -> (ADBQuerySpecPtr -> IO a) -> IO a
+withDetachedQueryPtr allocQuery f =
+  alloca (\qPtr -> do
+             allocQuery qPtr
+             (f qPtr))
+
+applyDetachedQueryPtr :: (ADBQuerySpecPtr -> IO a) -> QueryAllocator -> IO a
+applyDetachedQueryPtr f allocQuery = withDetachedQueryPtr allocQuery f
+
+withDetachedQuery :: QueryAllocator -> (ADBQuerySpec -> IO a) -> IO a
+withDetachedQuery allocQuery f =
+  alloca (\qPtr -> do
+             allocQuery qPtr
+             q <- peek qPtr
+             (f q))
+
+applyDetachedQuery :: (ADBQuerySpec -> IO a) -> QueryAllocator -> IO a
+applyDetachedQuery f allocQuery = withDetachedQuery allocQuery f
+
 execQuery :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
 execQuery adb allocQuery =
   withQueryPtr adb allocQuery (\qPtr -> do { r <- audiodb_query_spec adb qPtr; peek r >>= return })
