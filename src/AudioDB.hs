@@ -60,6 +60,12 @@ inSeconds = fromIntegral
 inFrames :: FeatureRate
 inFrames = ceiling
 
+withSeconds :: FeatureRate -> FrameSize -> (Seconds -> Seconds) -> Frame -> Frame
+withSeconds secToFrames framesToSec f frames = (secToFrames . f . framesToSec) frames
+
+withFrames :: FeatureRate -> FrameSize -> (Frame -> Frame) -> Seconds -> Seconds
+withFrames secToFrames framesToSec f seconds = (framesToSec . f . secToFrames) seconds
+
 withAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> (Ptr ADB) -> ADBResult
 withAudioDB = undefined
 
