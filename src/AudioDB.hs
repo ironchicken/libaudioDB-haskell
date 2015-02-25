@@ -325,6 +325,9 @@ withQueryPtr adb allocQuery f =
              dimOk <- checkDimensions adb datum
              (f qPtr))
 
+applyQueryPtr :: (Ptr ADB) -> (ADBQuerySpecPtr -> IO a) -> QueryAllocator -> IO a
+applyQueryPtr adb f allocQuery = withQueryPtr adb allocQuery f
+
 withQuery :: (Ptr ADB) -> QueryAllocator -> (ADBQuerySpec -> IO a) -> IO a
 withQuery adb allocQuery f =
   alloca (\qPtr -> do
@@ -333,6 +336,9 @@ withQuery adb allocQuery f =
              datum <- (return . queryid_datum . query_spec_qid) q >>= peek
              dimOk <- checkDimensions adb datum
              (f q))
+
+applyQuery :: (Ptr ADB) -> (ADBQuerySpec -> IO a) -> QueryAllocator -> IO a
+applyQuery adb f allocQuery = withQuery adb allocQuery f
 
 execQuery :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
 execQuery adb allocQuery =
