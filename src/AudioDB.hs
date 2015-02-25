@@ -317,17 +317,26 @@ mkQuery datum secToFrames sqStart sqLen qidFlgs acc dist ptsNN resultLen incl ex
 -- function?
 type QueryAllocator = (ADBQuerySpecPtr -> IO ())
 
-withQuery :: (Ptr ADB) -> QueryAllocator -> (ADBQuerySpecPtr -> IO a) -> IO a
-withQuery adb allocQuery f =
+withQueryPtr :: (Ptr ADB) -> QueryAllocator -> (ADBQuerySpecPtr -> IO a) -> IO a
+withQueryPtr adb allocQuery f =
   alloca (\qPtr -> do
              allocQuery qPtr
              datum <- peek qPtr >>= return . queryid_datum . query_spec_qid >>= peek
              dimOk <- checkDimensions adb datum
              (f qPtr))
 
+withQuery :: (Ptr ADB) -> QueryAllocator -> (ADBQuerySpec -> IO a) -> IO a
+withQuery adb allocQuery f =
+  alloca (\qPtr -> do
+             allocQuery qPtr
+             q <- peek qPtr
+             datum <- (return . queryid_datum . query_spec_qid) q >>= peek
+             dimOk <- checkDimensions adb datum
+             (f q))
+
 execQuery :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
 execQuery adb allocQuery =
-  withQuery adb allocQuery (\qPtr -> do { r <- audiodb_query_spec adb qPtr; peek r >>= return })
+  withQueryPtr adb allocQuery (\qPtr -> do { r <- audiodb_query_spec adb qPtr; peek r >>= return })
 
 -- FIXME You originally planned to have a query spec transformer
 -- between interations. Is there any need for that? It's slightly
