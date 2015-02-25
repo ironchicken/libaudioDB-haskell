@@ -456,6 +456,31 @@ execSequenceQuery :: (Ptr ADB)
 execSequenceQuery adb datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh =
   execQuery adb (mkSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh)
 
+transformSequenceQuery :: (ADBDatumPtr -> ADBDatumPtr)        -- query features
+                          -> FeatureRate
+                          -> FrameSize
+                          -> (Int -> Int)                     -- number of point nearest neighbours
+                          -> (Int -> Int)                     -- number of tracks
+                          -> (Seconds -> Seconds)             -- sequence start
+                          -> (Seconds -> Seconds)             -- sequence length
+                          -> (Maybe DistanceFlag -> Maybe DistanceFlag)
+                          -> (Maybe Double -> Maybe Double)   -- absolute power threshold)
+                          -> ADBQueryResultsPtr
+                          -> QueryAllocator
+                          -> ADBQuerySpecPtr
+                          -> IO ()
+transformSequenceQuery tDatum secToFrames framesToSec tPtsNN tResultLen tSqStart tSqLen tDist tAbsThrsh resPtr fromAlloc toPtr =
+  withDetachedQueryPtr fromAlloc $ \fromPtr -> do
+    q <- peek fromPtr
+    let datum     = tDatum     $ (queryid_datum . query_spec_qid) q
+        ptsNN     = tPtsNN     $ (query_parameters_npoints . query_spec_params) q
+        resultLen = tResultLen $ (query_parameters_ntracks . query_spec_params) q
+        sqStart   = (withSeconds secToFrames framesToSec tSqStart ((queryid_sequence_start . query_spec_qid) q))
+        sqLen     = (withSeconds secToFrames framesToSec tSqLen ((queryid_sequence_length . query_spec_qid) q))
+        dist      = tDist      $ Just $ (query_parameters_distance . query_spec_params) q
+        absThrsh  = tAbsThrsh  $ Just $ (query_refine_absolute_threshold . query_spec_refine) q
+    mkSequenceQuery datum secToFrames ptsNN resultLen (framesToSec sqStart) (framesToSec sqLen) dist absThrsh toPtr
+
 mkNSequenceQuery :: ADBDatumPtr  -- query features
                     -> FeatureRate
                     -> Int         -- number of point nearest neighbours
@@ -492,3 +517,12 @@ mkOneToOneSequenceQuery :: ADBDatumPtr  -- query features
                            -> ADBQuerySpecPtr
                            -> IO ()
 mkOneToOneSequenceQuery = undefined
+
+mkSequenceQueryDeltaNTracks :: FeatureRate
+                               -> FrameSize
+                               -> (Int -> Int)
+                               -> ADBQueryResultsPtr
+                               -> QueryAllocator
+                               -> ADBQuerySpecPtr
+                               -> IO ()
+mkSequenceQueryDeltaNTracks secToFrames frameToSecs delta = transformSequenceQuery id secToFrames frameToSecs id delta id id id id
