@@ -379,32 +379,43 @@ withResults rPtr f = do
 applyResults :: (ADBQueryResults -> IO a) -> ADBQueryResultsPtr -> IO a
 applyResults f rPtr = withResults rPtr f
 
--- FIXME You originally planned to have a query spec transformer
--- between interations. Is there any need for that? It's slightly
--- complicated in that it would require allocating a new query object
--- each time.
-multiQuery :: (Ptr ADB)
-              -> QueryAllocator
-              -> (ADBQueryResultsPtr -> IO a)   -- FIXME We're currently discarding the IO a here. We could make it IO (), or we could collect them up a list and return it?
-              -> (ADBQuerySpecPtr -> ADBQueryResultsPtr -> Bool)
-              -> IO ADBQueryResultsPtr
-multiQuery adb allocQuery interleave isFinished =
-  alloca $ (\qPtr -> do
-               let init = audiodb_query_spec adb qPtr
-                   step r = interleave r >> audiodb_query_spec_given_sofar adb qPtr r
-                   iter r = if isFinished qPtr r then return r else step r
+type QueryTransformer = (ADBQueryResultsPtr -> QueryAllocator -> QueryAllocator)
+type QueryCallback a = (ADBQueryResultsPtr -> IO a)
+type QueryComplete = (QueryAllocator -> ADBQueryResultsPtr -> IO Bool)
 
-               allocQuery qPtr
+queryStart :: (Ptr ADB) -> ADBQuerySpecPtr -> IO ADBQueryResultsPtr
+queryStart adb qPtr = audiodb_query_spec adb qPtr
 
-               -- Check the dimensions of the query match the
-               -- dimensions of the database
-               putStrLn $ "Allocated query " ++ (show qPtr)
+queryStep :: (Ptr ADB) -> ADBQuerySpecPtr -> ADBQueryResultsPtr -> IO ADBQueryResultsPtr
+queryStep adb qPtr res = audiodb_query_spec_given_sofar adb qPtr res
 
-               datum <- peek qPtr >>= return . queryid_datum . query_spec_qid >>= peek
-               dimOk <- checkDimensions adb datum
+thenElseIfM :: (Monad m) => m a -> m a -> Bool -> m a
+thenElseIfM t f p = if p then t else f
 
-               r0 <- init
-               iter r0)
+queryWithCallback :: (Ptr ADB) -> QueryAllocator -> QueryCallback a -> QueryComplete -> IO ADBQueryResultsPtr
+queryWithCallback adb alloc callback isFinished =
+  withQueryPtr adb alloc (\qPtr -> do
+                             let initQ   = queryStart adb qPtr
+                                 stepQ r = callback r >> queryStep adb qPtr r >>= iterQ
+                                 iterQ r = isFinished alloc r >>= thenElseIfM (return r) (stepQ r)
+                             r0 <- initQ
+                             iterQ r0)
+
+queryWithTransform :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryComplete -> IO ADBQueryResultsPtr
+queryWithTransform adb alloc transform complete = do
+  let initQ     = withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
+      stepQ a r = withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ a
+      iterQ a r = complete a r >>= thenElseIfM (return r) (stepQ (transform r a) r)
+  r0 <- initQ
+  iterQ alloc r0
+
+queryWithCallbacksAndTransform :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryCallback a -> QueryComplete -> IO ADBQueryResultsPtr
+queryWithCallbacksAndTransform adb alloc transform callback complete = do
+  let initQ     = withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
+      stepQ a r = callback r >> withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ a
+      iterQ a r = complete a r >>= thenElseIfM (return r) (stepQ (transform r a) r)
+  r0 <- initQ
+  iterQ alloc r0
 
 mkPointQuery :: ADBDatumPtr   -- query features
                 -> Int        -- number of point nearest neighbours
