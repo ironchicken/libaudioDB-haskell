@@ -30,7 +30,7 @@ import Foreign.C.Types
 import Foreign.C.String
 import qualified Data.Vector.Storable as DV
 
-#include "audioDB_API.h"
+#include "audioDB/audioDB_API.h"
 
 data ADB = ADB (Ptr ADB)
 -- data AudioDB = AudioDB !(ForeignPtr ADB)

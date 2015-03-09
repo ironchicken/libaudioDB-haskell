@@ -13,7 +13,6 @@ library
   exposed-modules: AudioDB
   other-modules: ADB
   hs-source-dirs: src
-  include-dirs: include
   ghc-options: -Wall
 
 executable adb-test
@@ -22,7 +21,6 @@ executable adb-test
   hs-source-dirs: tests
   other-modules: ADB
   hs-source-dirs: src
-  include-dirs: include
   ghc-options: -Wall
   extra-libraries: audioDB
 
@@ -32,7 +30,6 @@ executable audiodb-test
   hs-source-dirs: tests
   other-modules: AudioDB, ADB
   hs-source-dirs: src
-  include-dirs: include
   ghc-options: -Wall
   extra-libraries: audioDB
 
@@ -40,5 +37,4 @@ executable adb
   build-depends: base, filepath, vector, parsec, MissingH, AudioDB
   main-is: ADBCLI.hs
   hs-source-dirs: src
-  include-dirs: include
   other-modules: ADB
