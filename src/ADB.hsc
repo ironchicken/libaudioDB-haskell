@@ -518,6 +518,12 @@ combineRefinementFlags = RefinementFlag . foldr ((.|.) . unRefinementFlag) 0
 
 -- Importing the foreign functions
 
+foreign import ccall unsafe "audioDB_API.h audiodb_lib_build_number"
+  audiodb_lib_build_number :: IO CString
+
+foreign import ccall unsafe "audioDB_API.h audiodb_lib_build_date"
+  audiodb_lib_build_date :: IO CString
+
 foreign import ccall unsafe "audioDB_API.h audiodb_open"
   audiodb_open :: CString -> CInt -> IO (Ptr ADB)
 

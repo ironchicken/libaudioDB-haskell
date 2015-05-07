@@ -71,6 +71,10 @@ test_audiodb_dump adb path = do
 
 main :: IO ()
 main = do
+  build_num  <- audiodb_lib_build_number >>= peekCString
+  build_date <- audiodb_lib_build_date >>= peekCString
+  putStrLn $ "libaudioDB " ++ build_num ++ "; date " ++ build_date
+
   fp       <- newCString "test.adb"
   adb      <- audiodb_create fp (CUInt 0) (CUInt 0) (CUInt 2)
   l2normed <- audiodb_l2norm adb
