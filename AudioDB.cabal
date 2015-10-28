@@ -10,8 +10,7 @@ cabal-version: >= 1.8
 
 library
   build-depends: base, filepath, vector, containers, parsec, MissingH
-  exposed-modules: AudioDB
-  other-modules: ADB
+  exposed-modules: AudioDB, ADB
   hs-source-dirs: src
   ghc-options: -Wall
 
