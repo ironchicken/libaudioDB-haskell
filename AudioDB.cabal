@@ -32,9 +32,3 @@ executable audiodb-test
   hs-source-dirs: src
   ghc-options: -Wall
   extra-libraries: audioDB
-
-executable adb
-  build-depends: base, filepath, vector, parsec, MissingH, AudioDB
-  main-is: ADBCLI.hs
-  hs-source-dirs: src
-  other-modules: ADB
