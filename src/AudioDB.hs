@@ -28,9 +28,9 @@ module AudioDB where
 import           ADB
 import           Data.Maybe (isJust, catMaybes)
 import           Control.Monad (when)
-import           Control.Exception (throw, Exception)
+import           Control.Exception (throw, Exception, bracket)
 import           Data.Typeable (Typeable)
-import           Foreign (Ptr, peek, poke)
+import           Foreign (Ptr, peek, poke, nullPtr)
 import           Foreign.C.Types
 import           Foreign.Marshal.Utils (new)
 import           Foreign.Marshal.Alloc (alloca)
@@ -39,6 +39,7 @@ import           Data.CSV (csvFile)
 import           Text.Parsec.String (parseFromFile)
 import           Text.Parsec.Error (ParseError)
 import qualified Data.Vector.Storable as DV
+--import           System.C.IO
 
 openDB :: FilePath -> (Ptr ADB)
 openDB = undefined
@@ -72,8 +73,12 @@ withAudioDB = undefined
 withExistingAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> FilePath -> ADBResult
 withExistingAudioDB = undefined
 
-withExistingROAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> FilePath -> ADBResult
-withExistingROAudioDB = undefined
+withExistingROAudioDB :: FilePath -> (Maybe (Ptr ADB) -> IO a) -> IO a
+withExistingROAudioDB fp f = do
+  adbFN  <- newCString fp
+  bracket (audiodb_open adbFN 0)--(oflags [O_RDONLY]))
+    (\adb -> if adb /= nullPtr then audiodb_close adb else return ())
+    (\adb -> f $ if adb /= nullPtr then Just adb else Nothing)
 
 withNewAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> FilePath -> ADBResult
 withNewAudioDB = undefined
