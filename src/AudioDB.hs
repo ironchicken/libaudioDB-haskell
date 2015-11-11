@@ -194,13 +194,16 @@ readN3Features = undefined
 parseN3FeaturesFile :: FeaturesParser
 parseN3FeaturesFile = undefined
 
-featuresFromKey :: (Ptr ADB) -> String -> IO (Maybe ADBDatum)
-featuresFromKey adb key = alloca $ \datumPtr -> do
+withMaybeDatumPtr :: (Ptr ADB) -> String -> (Maybe ADBDatumPtr -> a) -> IO a
+withMaybeDatumPtr adb key f = alloca $ \datumPtr -> do
   key'  <- newCString key
   res   <- audiodb_retrieve_datum adb key' datumPtr
   if res /= 0
-    then return $ Nothing
-    else do datum <- peek datumPtr; return $ Just datum
+    then do return $ f Nothing
+    else do return $ f (Just datumPtr)
+
+featuresFromKey :: (Ptr ADB) -> String -> IO (Maybe ADBDatumPtr)
+featuresFromKey adb key = withMaybeDatumPtr adb key id
 
 insertFeatures :: (Ptr ADB) -> ADBDatumPtr -> IO Bool
 insertFeatures adb datumPtr =
