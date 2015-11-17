@@ -467,7 +467,7 @@ execSequenceQuery :: (Ptr ADB)
 execSequenceQuery adb datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh =
   execQuery adb (mkSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh)
 
-transformSequenceQuery :: (ADBDatumPtr -> ADBDatumPtr)        -- query features
+transformSequenceQuery :: (ADBDatumPtr -> IO ADBDatumPtr)     -- query features
                           -> FeatureRate
                           -> FrameSize
                           -> (Int -> Int)                     -- number of point nearest neighbours
@@ -482,9 +482,9 @@ transformSequenceQuery :: (ADBDatumPtr -> ADBDatumPtr)        -- query features
                           -> IO ()
 transformSequenceQuery tDatum secToFrames framesToSec tPtsNN tResultLen tSqStart tSqLen tDist tAbsThrsh resPtr fromAlloc toPtr =
   withDetachedQueryPtr fromAlloc $ \fromPtr -> do
-    q <- peek fromPtr
-    let datum     = tDatum     $ (queryid_datum . query_spec_qid) q
-        ptsNN     = tPtsNN     $ (query_parameters_npoints . query_spec_params) q
+    q     <- peek fromPtr
+    datum <- tDatum $ (queryid_datum . query_spec_qid) q
+    let ptsNN     = tPtsNN     $ (query_parameters_npoints . query_spec_params) q
         resultLen = tResultLen $ (query_parameters_ntracks . query_spec_params) q
         sqStart   = (withSeconds secToFrames framesToSec tSqStart ((queryid_sequence_start . query_spec_qid) q))
         sqLen     = (withSeconds secToFrames framesToSec tSqLen ((queryid_sequence_length . query_spec_qid) q))
@@ -536,4 +536,4 @@ mkSequenceQueryDeltaNTracks :: FeatureRate
                                -> QueryAllocator
                                -> ADBQuerySpecPtr
                                -> IO ()
-mkSequenceQueryDeltaNTracks secToFrames frameToSecs delta = transformSequenceQuery id secToFrames frameToSecs id delta id id id id
+mkSequenceQueryDeltaNTracks secToFrames frameToSecs delta = transformSequenceQuery return secToFrames frameToSecs id delta id id id id
