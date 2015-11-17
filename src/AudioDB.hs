@@ -387,9 +387,9 @@ withResults rPtr f = do
 applyResults :: (ADBQueryResults -> IO a) -> ADBQueryResultsPtr -> IO a
 applyResults f rPtr = withResults rPtr f
 
-type QueryTransformer = (ADBQueryResultsPtr -> QueryAllocator -> QueryAllocator)
-type QueryCallback a = (ADBQueryResultsPtr -> IO a)
-type QueryComplete = (QueryAllocator -> ADBQueryResultsPtr -> IO Bool)
+type QueryTransformer = (Int -> ADBQueryResultsPtr -> QueryAllocator -> QueryAllocator)
+type QueryCallback a = (Int -> ADBQueryResultsPtr -> IO a)
+type QueryComplete = (Int -> QueryAllocator -> ADBQueryResultsPtr -> IO Bool)
 
 queryStart :: (Ptr ADB) -> ADBQuerySpecPtr -> IO ADBQueryResultsPtr
 queryStart adb qPtr = audiodb_query_spec adb qPtr
@@ -403,27 +403,30 @@ thenElseIfM t f p = if p then t else f
 queryWithCallback :: (Ptr ADB) -> QueryAllocator -> QueryCallback a -> QueryComplete -> IO ADBQueryResultsPtr
 queryWithCallback adb alloc callback isFinished =
   withQueryPtr adb alloc (\qPtr -> do
-                             let initQ   = queryStart adb qPtr
-                                 stepQ r = callback r >> queryStep adb qPtr r >>= iterQ
-                                 iterQ r = isFinished alloc r >>= thenElseIfM (return r) (stepQ r)
-                             r0 <- initQ
-                             iterQ r0)
+                             let iteration = 0
+                                 initQ _   = queryStart adb qPtr
+                                 stepQ i r = callback i r >> queryStep adb qPtr r >>= iterQ (i + 1)
+                                 iterQ i r = isFinished i alloc r >>= thenElseIfM (return r) (stepQ i r)
+                             r0 <- initQ iteration
+                             iterQ (iteration + 1) r0)
 
 queryWithTransform :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryComplete -> IO ADBQueryResultsPtr
 queryWithTransform adb alloc transform complete = do
-  let initQ     = withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
-      stepQ a r = withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ a
-      iterQ a r = complete a r >>= thenElseIfM (return r) (stepQ (transform r a) r)
-  r0 <- initQ
-  iterQ alloc r0
+  let iteration   = 0
+      initQ _     = withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
+      stepQ i a r = withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ (i + 1) a
+      iterQ i a r = complete i a r >>= thenElseIfM (return r) (stepQ i (transform i r a) r)
+  r0 <- initQ iteration
+  iterQ (iteration + 1) alloc r0
 
 queryWithCallbacksAndTransform :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryCallback a -> QueryComplete -> IO ADBQueryResultsPtr
 queryWithCallbacksAndTransform adb alloc transform callback complete = do
-  let initQ     = withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
-      stepQ a r = callback r >> withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ a
-      iterQ a r = complete a r >>= thenElseIfM (return r) (stepQ (transform r a) r)
-  r0 <- initQ
-  iterQ alloc r0
+  let iteration   = 0
+      initQ _     = withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
+      stepQ i a r = callback i r >> withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ (i + 1) a
+      iterQ i a r = complete i a r >>= thenElseIfM (return r) (stepQ i (transform i r a) r)
+  r0 <- initQ iteration
+  iterQ (iteration + 1) alloc r0
 
 mkPointQuery :: ADBDatumPtr   -- query features
                 -> Int        -- number of point nearest neighbours

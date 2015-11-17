@@ -76,13 +76,13 @@ test_callback_query adbFile queryFile qPowersFile start len = do
   queryFeatures <- readCSVFeaturesTimesPowers "chester_16" queryFile qPowersFile
   maybe (putStrLn $ "Could not parse " ++ queryFile)
     (\datumPtr -> do
-        let ntracks        = query_parameters_ntracks . query_spec_params
-            qAlloc         = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
-            isFinished _ _ = putStrLn "isFinished..." >> return False -- withQueryPtr adb a (\qPtr -> do { q <- peek qPtr; return $ ntracks q >= 25 })
-            callback r     = do
+        let ntracks          = query_parameters_ntracks . query_spec_params
+            qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
+            isFinished _ _ _ = putStrLn "isFinished..." >> return False -- withQueryPtr adb a (\qPtr -> do { q <- peek qPtr; return $ ntracks q >= 25 })
+            callback i r     = do
               res <- peek r
               n <- return $ query_results_nresults res
-              putStrLn $ "Callback says: " ++ (show n)
+              putStrLn $ "Callback #" ++ (show i) ++ " says: " ++ (show n)
               putStrLn (showResults res)
               return n
 
@@ -99,10 +99,10 @@ test_transform_query adbFile queryFile qPowersFile start len = do
   queryFeatures <- readCSVFeaturesTimesPowers "chester_16" queryFile qPowersFile
   maybe (putStrLn $ "Could not parse " ++ queryFile)
     (\datumPtr -> do
-        let ntracks        = query_parameters_ntracks . query_spec_params
-            qAlloc         = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
-            isFinished _ r = withResults r (\res -> return $ (query_results_nresults res) >= 20)
-            transform r a  = mkSequenceQueryDeltaNTracks (floor . (* framesPerSecond)) framesToSeconds (\x -> x + 5) r a
+        let ntracks          = query_parameters_ntracks . query_spec_params
+            qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
+            isFinished _ _ r = withResults r (\res -> return $ (query_results_nresults res) >= 20)
+            transform _ r a  = mkSequenceQueryDeltaNTracks (floor . (* framesPerSecond)) framesToSeconds (\x -> x + 5) r a
 
         putStrLn $ "Parsed " ++ queryFile
         res <- queryWithTransform adb qAlloc transform isFinished
@@ -119,11 +119,11 @@ test_callbacktransform_query adbFile queryFile qPowersFile start len = do
   queryFeatures <- readCSVFeaturesTimesPowers "chester_16" queryFile qPowersFile
   maybe (putStrLn $ "Could not parse " ++ queryFile)
     (\datumPtr -> do
-        let ntracks        = query_parameters_ntracks . query_spec_params
-            qAlloc         = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
-            isFinished a _ = withQuery adb a (\q -> do { return $ (ntracks q) >= 20 }) --withResults r (\res -> return $ (query_results_nresults res) >= 20)
-            callback r     = withResults r (\res -> do { putStrLn (showResults res); return $ (query_results_nresults res) })
-            transform r a  = mkSequenceQueryDeltaNTracks (floor . (* framesPerSecond)) framesToSeconds (\x -> x + 5) r a
+        let ntracks          = query_parameters_ntracks . query_spec_params
+            qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
+            isFinished _ a _ = withQuery adb a (\q -> do { return $ (framesToSeconds ((queryid_sequence_length . query_spec_qid) q)) >= 11 }) --withResults r (\res -> return $ (query_results_nresults res) >= 20)
+            callback i r     = withResults r (\res -> do { putStrLn $ "#" ++ (show i) ++ ": " ++ (showResults res); return $ (query_results_nresults res) })
+            transform _ r a  = mkSequenceQueryDeltaSqLength (floor . (* framesPerSecond)) framesToSeconds (\x -> x + 3) r a
 
         putStrLn $ "Parsed " ++ queryFile
         res <- queryWithCallbacksAndTransform adb qAlloc transform callback isFinished
