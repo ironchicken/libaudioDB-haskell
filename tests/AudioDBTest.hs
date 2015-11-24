@@ -11,7 +11,7 @@ import qualified Data.Vector.Storable as V
 test_readCSVFeatures :: String -> FilePath -> IO ()
 test_readCSVFeatures key fp = do
   datumPtr <- readCSVFeaturesTimes key fp
-  maybe (putStrLn "Could no parse.")
+  maybe (putStrLn "Could not parse.")
     (\p -> do
         d <- peek p
         putStrLn $ show "Key: " ++ (show (datum_key d)) ++
@@ -121,9 +121,9 @@ test_callbacktransform_query adbFile queryFile qPowersFile start len = do
     (\datumPtr -> do
         let ntracks          = query_parameters_ntracks . query_spec_params
             qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
-            isFinished _ a _ = withQuery adb a (\q -> do { return $ (framesToSeconds ((queryid_sequence_length . query_spec_qid) q)) >= 11 }) --withResults r (\res -> return $ (query_results_nresults res) >= 20)
+            isFinished i a _ = withQuery adb a (\q -> do { return $ (ntracks q) >= 20 }) --withResults r (\res -> return $ (query_results_nresults res) >= 20)
             callback i r     = withResults r (\res -> do { putStrLn $ "#" ++ (show i) ++ ": " ++ (showResults res); return $ (query_results_nresults res) })
-            transform _ r a  = mkSequenceQueryDeltaSqLength (floor . (* framesPerSecond)) framesToSeconds (\x -> x + 3) r a
+            transform i r a  = mkSequenceQueryDeltaNTracks (floor . (* framesPerSecond)) framesToSeconds (\x -> x + 5) r a
 
         putStrLn $ "Parsed " ++ queryFile
         res <- queryWithCallbacksAndTransform adb qAlloc transform callback isFinished
