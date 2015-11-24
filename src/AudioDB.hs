@@ -537,3 +537,61 @@ mkSequenceQueryDeltaNTracks :: FeatureRate
                                -> ADBQuerySpecPtr
                                -> IO ()
 mkSequenceQueryDeltaNTracks secToFrames frameToSecs delta = transformSequenceQuery return secToFrames frameToSecs id delta id id id id
+
+mkSequenceQueryMutateDatum :: FeatureRate
+                              -> FrameSize
+                              -> (ADBDatumPtr -> IO ())
+                              -> ADBQueryResultsPtr
+                              -> QueryAllocator
+                              -> ADBQuerySpecPtr
+                              -> IO ()
+mkSequenceQueryMutateDatum secToFrames frameToSecs mutate res alloc qPtr = withDetachedQueryPtr alloc $ \fromPtr -> do
+    q <- peek fromPtr
+    let datum     = (queryid_datum . query_spec_qid) q
+        ptsNN     = (query_parameters_npoints . query_spec_params) q
+        resultLen = (query_parameters_ntracks . query_spec_params) q
+        sqStart   = (queryid_sequence_start . query_spec_qid) q
+        sqLen     = (queryid_sequence_length . query_spec_qid) q
+        dist      = Just $ (query_parameters_distance . query_spec_params) q
+        absThrsh  = Just $ (query_refine_absolute_threshold . query_spec_refine) q
+    mutate datum
+    mkSequenceQuery datum secToFrames ptsNN resultLen (frameToSecs sqStart) (frameToSecs sqLen) dist absThrsh qPtr
+
+rotateVector :: (DV.Storable a) => Int -> DV.Vector a -> DV.Vector a
+rotateVector delta v = (DV.++) back front
+  where (front, back) = DV.splitAt delta v
+
+mapSlices :: (DV.Storable a) => (DV.Vector a -> DV.Vector a) -> Int -> DV.Vector a -> [DV.Vector a]
+mapSlices f sliceLen values = mapSlice 0
+  where mapSlice start
+          | start + sliceLen <= (DV.length values) = (f (DV.slice start sliceLen values)) : mapSlice (start + sliceLen)
+          | otherwise                              = []
+
+rotateDatum :: Int -> ADBDatumPtr -> IO ()
+rotateDatum delta datumPtr = do
+  datum  <- peek datumPtr
+
+  let values    = datum_data datum
+      rotValues = DV.concat $ mapSlices (rotateVector delta) (datum_dim datum) values
+      rotDatum  = datum { datum_data = rotValues }
+
+  poke datumPtr rotDatum
+
+execSequenceQueryWithRotation :: (Ptr ADB)
+                               -> ADBDatumPtr  -- query features
+                               -> FeatureRate
+                               -> FrameSize
+                               -> Int          -- number of point nearest neighbours
+                               -> Int          -- number of tracks
+                               -> Seconds      -- sequence start
+                               -> Seconds      -- sequence length
+                               -> Maybe DistanceFlag
+                               -> Maybe Double -- absolute power threshold
+                               -> [Int]        -- rotations
+                               -> IO ADBQueryResults
+execSequenceQueryWithRotation adb datum secToFrames frameToSecs ptsNN resultLen sqStart sqLen dist absThrsh rotations =
+  queryWithTransform adb alloc transform isFinished >>= peek
+  where
+    alloc            = mkSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh
+    transform i r a  = mkSequenceQueryMutateDatum secToFrames frameToSecs (rotateDatum (rotations!!i)) r a
+    isFinished i _ r = return $ i == (length rotations)
