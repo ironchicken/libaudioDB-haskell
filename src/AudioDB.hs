@@ -375,9 +375,13 @@ withDetachedQuery allocQuery f =
 applyDetachedQuery :: (ADBQuerySpec -> IO a) -> QueryAllocator -> IO a
 applyDetachedQuery f allocQuery = withDetachedQuery allocQuery f
 
-execQuery :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
-execQuery adb allocQuery =
+querySinglePass :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResults
+querySinglePass adb allocQuery =
   withQueryPtr adb allocQuery (\qPtr -> do { r <- audiodb_query_spec adb qPtr; peek r >>= return })
+
+querySinglePassPtr :: (Ptr ADB) -> QueryAllocator -> IO ADBQueryResultsPtr
+querySinglePassPtr adb allocQuery =
+  withQueryPtr adb allocQuery (\qPtr -> audiodb_query_spec adb qPtr)
 
 withResults :: ADBQueryResultsPtr -> (ADBQueryResults -> IO a) -> IO a
 withResults rPtr f = do
@@ -428,6 +432,16 @@ queryWithCallbacksAndTransform adb alloc transform callback complete = do
   r0 <- initQ iteration
   iterQ (iteration + 1) alloc r0
 
+query :: (Ptr ADB) -> QueryAllocator -> Maybe QueryTransformer -> Maybe (QueryCallback a) -> Maybe QueryComplete -> IO ADBQueryResultsPtr
+query adb alloc Nothing          Nothing         Nothing           = querySinglePassPtr adb alloc
+query adb alloc (Just transform) Nothing         (Just isFinished) = queryWithTransform adb alloc transform isFinished
+query adb alloc Nothing          (Just callback) (Just isFinished) = queryWithCallback adb alloc callback isFinished
+query adb alloc (Just transform) (Just callback) (Just isFinished) = queryWithCallbacksAndTransform adb alloc transform callback isFinished
+query adb alloc Nothing          Nothing         (Just isFinished) = error "QueryComplete requires QueryTransformer and/or QueryCallback"
+query adb alloc (Just transform) Nothing         Nothing           = error "QueryTransform requires QueryComplete"
+query adb alloc Nothing          (Just callback) Nothing           = error "QueryCallback requires QueryComplete"
+query adb alloc (Just transform) (Just callback) Nothing           = error "QueryTransform and QueryCallback requires QueryComplete"
+
 mkPointQuery :: ADBDatumPtr   -- query features
                 -> ADBQuerySpecPtr
                 -> IO ()
@@ -461,7 +475,7 @@ execSequenceQuery :: (Ptr ADB)
                      -> Maybe Double -- absolute power threshold
                      -> IO ADBQueryResults
 execSequenceQuery adb datum secToFrames resultLen sqStart sqLen dist absThrsh =
-  execQuery adb (mkSequenceQuery datum secToFrames resultLen sqStart sqLen dist absThrsh)
+  querySinglePass adb (mkSequenceQuery datum secToFrames resultLen sqStart sqLen dist absThrsh)
 
 transformSequenceQuery :: (ADBDatumPtr -> IO ADBDatumPtr)     -- query features
                           -> FeatureRate
@@ -516,7 +530,7 @@ execNSequenceQuery :: (Ptr ADB)
                       -> Maybe Double -- absolute power threshold
                       -> IO ADBQueryResults
 execNSequenceQuery adb datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh =
-  execQuery adb (mkNSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh)
+  querySinglePass adb (mkNSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh)
 
 mkOneToOneSequenceQuery :: ADBDatumPtr  -- query features
                            -> ADBQuerySpecPtr
