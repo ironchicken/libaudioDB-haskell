@@ -504,33 +504,29 @@ mkNSequenceQuery :: ADBDatumPtr  -- query features
                     -> FeatureRate
                     -> Int         -- number of point nearest neighbours
                     -> Int         -- number of tracks
-                    -> Seconds     -- sequence start
                     -> Seconds     -- sequence length
                     -> Maybe DistanceFlag
                     -> Maybe Double -- absolute power threshold
+                    -> Int         -- query hop size
+                    -> Int         -- instance hop size
                     -> ADBQuerySpecPtr
                     -> IO ()
-mkNSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh qPtr =
-  -- FIXME How do we actually implement nsequence query? In audioDB
-  -- the only obvious difference is the type of reporter, but I don't
-  -- think that means anything in the library. I've wondered whether
-  -- the one_to_one accumulator is the thing. It needs a radius rather
-  -- than a pointsNN argument, but from audioDB it just returns lots
-  -- of 0 hits.
-  mkQuery datum (Just secToFrames) (Just sqStart) (Just sqLen) Nothing (Just oneToOneFlag) (dist ||| euclideanNormedFlag) (Just ptsNN) (Just resultLen) Nothing Nothing Nothing (absThrsh ||| 0) Nothing Nothing Nothing Nothing qPtr
+mkNSequenceQuery datum secToFrames ptsNN resultLen sqLen dist absThrsh qHopSize iHopSize qPtr =
+  mkQuery datum (Just secToFrames) (Just 0) (Just sqLen) (Just exhaustiveFlag) (Just perTrackFlag) (dist ||| euclideanNormedFlag) (Just ptsNN) (Just resultLen) Nothing Nothing Nothing (absThrsh ||| 0) Nothing Nothing (Just qHopSize) (Just iHopSize) qPtr
 
 execNSequenceQuery :: (Ptr ADB)
                       -> ADBDatumPtr -- query features
                       -> FeatureRate
                       -> Int         -- number of point nearest neighbours
                       -> Int         -- number of tracks
-                      -> Seconds     -- sequence start
                       -> Seconds     -- sequence length
                       -> Maybe DistanceFlag
                       -> Maybe Double -- absolute power threshold
+                      -> Int         -- query hop size
+                      -> Int         -- instance hop size
                       -> IO ADBQueryResults
-execNSequenceQuery adb datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh =
-  querySinglePass adb (mkNSequenceQuery datum secToFrames ptsNN resultLen sqStart sqLen dist absThrsh)
+execNSequenceQuery adb datum secToFrames ptsNN resultLen sqLen dist absThrsh qHopSize iHopSize =
+  querySinglePass adb (mkNSequenceQuery datum secToFrames ptsNN resultLen sqLen dist absThrsh qHopSize iHopSize)
 
 mkOneToOneSequenceQuery :: ADBDatumPtr  -- query features
                            -> ADBQuerySpecPtr
