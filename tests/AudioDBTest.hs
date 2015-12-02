@@ -146,6 +146,22 @@ test_rotation_query adbFile queryFile qPowersFile start len rotations = do
     )
     queryFeatures
 
+test_polymorphic_query_with_rotations :: FilePath -> FilePath -> FilePath -> Seconds -> Seconds -> [Int] -> IO ()
+test_polymorphic_query_with_rotations adbFile queryFile qPowersFile start len rotations = do
+  adbFN  <- newCString adbFile
+  adb    <- audiodb_open adbFN 0
+  if adb == nullPtr then putStrLn $ "Could not open " ++ (show adbFile) else putStrLn $ "Opened " ++ (show adbFile)
+  queryFeatures <- readCSVFeaturesTimesPowers "chester_16" queryFile qPowersFile
+  maybe (putStrLn $ "Could not parse " ++ queryFile)
+    (\p -> do
+        putStrLn $ "Parsed " ++ queryFile
+        let (qAlloc, qTransform, qComplete) = mkSequenceQueryWithRotation p (floor . (* framesPerSecond)) framesToSeconds 25 start len (Just euclideanNormedFlag) Nothing rotations
+        resPtr <- query adb qAlloc (Just qTransform) Nothing (Just qComplete)
+        res    <- peek resPtr
+        putStrLn (showResults res)
+    )
+    queryFeatures
+
 db_file :: String
 db_file = undefined
 
@@ -186,5 +202,6 @@ main = do
   -- test_transform_query db_file test_features_file test_power_features_file query_seq_start query_seq_length
   -- test_callbacktransform_query db_file test_features_file test_power_features_file query_seq_start query_seq_length
   -- test_rotation_query db_file test_features_file test_power_features_file query_seq_start query_seq_length [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+  -- test_polymorphic_query_with_rotations db_file test_features_file test_power_features_file query_seq_start query_seq_length [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
   putStrLn "Done."

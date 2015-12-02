@@ -584,6 +584,22 @@ rotateDatum delta datumPtr = do
 
   poke datumPtr rotDatum
 
+mkSequenceQueryWithRotation :: ADBDatumPtr  -- query features
+                               -> FeatureRate
+                               -> FrameSize
+                               -> Int          -- number of tracks
+                               -> Seconds      -- sequence start
+                               -> Seconds      -- sequence length
+                               -> Maybe DistanceFlag
+                               -> Maybe Double -- absolute power threshold
+                               -> [Int]        -- rotations
+                               -> (QueryAllocator, QueryTransformer, QueryComplete)
+mkSequenceQueryWithRotation datum secToFrames frameToSecs resultLen sqStart sqLen dist absThrsh rotations = (alloc, transform, isFinished)
+  where
+    alloc            = mkSequenceQuery datum secToFrames resultLen sqStart sqLen dist absThrsh
+    transform i r a  = mkSequenceQueryMutateDatum secToFrames frameToSecs (rotateDatum (rotations!!i)) r a
+    isFinished i _ r = return $ i == (length rotations)
+
 execSequenceQueryWithRotation :: (Ptr ADB)
                                -> ADBDatumPtr  -- query features
                                -> FeatureRate
@@ -597,7 +613,4 @@ execSequenceQueryWithRotation :: (Ptr ADB)
                                -> IO ADBQueryResults
 execSequenceQueryWithRotation adb datum secToFrames frameToSecs resultLen sqStart sqLen dist absThrsh rotations =
   queryWithTransform adb alloc transform isFinished >>= peek
-  where
-    alloc            = mkSequenceQuery datum secToFrames resultLen sqStart sqLen dist absThrsh
-    transform i r a  = mkSequenceQueryMutateDatum secToFrames frameToSecs (rotateDatum (rotations!!i)) r a
-    isFinished i _ r = return $ i == (length rotations)
+  where (alloc, transform, isFinished) = mkSequenceQueryWithRotation datum secToFrames frameToSecs resultLen sqStart sqLen dist absThrsh rotations
