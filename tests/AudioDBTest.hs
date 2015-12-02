@@ -63,7 +63,7 @@ test_query adbFile queryFile qPowersFile start len = do
   maybe (putStrLn $ "Could not parse " ++ queryFile)
     (\p -> do
         putStrLn $ "Parsed " ++ queryFile
-        res <- execSequenceQuery adb p (floor . (* framesPerSecond)) 1 25 start len (Just euclideanNormedFlag) Nothing
+        res <- execSequenceQuery adb p (floor . (* framesPerSecond)) 25 start len (Just euclideanNormedFlag) Nothing
         putStrLn (showResults res)
     )
     queryFeatures
@@ -77,7 +77,7 @@ test_callback_query adbFile queryFile qPowersFile start len = do
   maybe (putStrLn $ "Could not parse " ++ queryFile)
     (\datumPtr -> do
         let ntracks          = query_parameters_ntracks . query_spec_params
-            qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
+            qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 5 start len (Just euclideanNormedFlag) Nothing
             isFinished _ _ _ = putStrLn "isFinished..." >> return False -- withQueryPtr adb a (\qPtr -> do { q <- peek qPtr; return $ ntracks q >= 25 })
             callback i r     = do
               res <- peek r
@@ -100,7 +100,7 @@ test_transform_query adbFile queryFile qPowersFile start len = do
   maybe (putStrLn $ "Could not parse " ++ queryFile)
     (\datumPtr -> do
         let ntracks          = query_parameters_ntracks . query_spec_params
-            qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
+            qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 5 start len (Just euclideanNormedFlag) Nothing
             isFinished _ _ r = withResults r (\res -> return $ (query_results_nresults res) >= 20)
             transform _ r a  = mkSequenceQueryDeltaNTracks (floor . (* framesPerSecond)) framesToSeconds (\x -> x + 5) r a
 
@@ -120,7 +120,7 @@ test_callbacktransform_query adbFile queryFile qPowersFile start len = do
   maybe (putStrLn $ "Could not parse " ++ queryFile)
     (\datumPtr -> do
         let ntracks          = query_parameters_ntracks . query_spec_params
-            qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 1 5 start len (Just euclideanNormedFlag) Nothing
+            qAlloc           = mkSequenceQuery datumPtr (floor . (* framesPerSecond)) 5 start len (Just euclideanNormedFlag) Nothing
             isFinished i a _ = withQuery adb a (\q -> do { return $ (ntracks q) >= 20 }) --withResults r (\res -> return $ (query_results_nresults res) >= 20)
             callback i r     = withResults r (\res -> do { putStrLn $ "#" ++ (show i) ++ ": " ++ (showResults res); return $ (query_results_nresults res) })
             transform i r a  = mkSequenceQueryDeltaNTracks (floor . (* framesPerSecond)) framesToSeconds (\x -> x + 5) r a
@@ -141,7 +141,7 @@ test_rotation_query adbFile queryFile qPowersFile start len rotations = do
   maybe (putStrLn $ "Could not parse " ++ queryFile)
     (\p -> do
         putStrLn $ "Parsed " ++ queryFile
-        res <- execSequenceQueryWithRotation adb p (floor . (* framesPerSecond)) framesToSeconds 1 25 start len (Just euclideanNormedFlag) Nothing rotations
+        res <- execSequenceQueryWithRotation adb p (floor . (* framesPerSecond)) framesToSeconds 25 start len (Just euclideanNormedFlag) Nothing rotations
         putStrLn (showResults res)
     )
     queryFeatures
