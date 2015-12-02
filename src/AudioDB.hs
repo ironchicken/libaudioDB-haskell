@@ -312,7 +312,7 @@ mkQuery datum secToFrames sqStart sqLen qidFlgs acc dist ptsNN resultLen incl ex
         query_refine_duration_ratio     = (durRat // 0),
         query_refine_qhopsize           = (qHopSz // 1),
         query_refine_ihopsize           = (iHopSz // 1) }
-      query = ADBQuerySpec {
+      querySpec = ADBQuerySpec {
         query_spec_qid    = qid,
         query_spec_params = params,
         query_spec_refine = refine }
@@ -320,7 +320,7 @@ mkQuery datum secToFrames sqStart sqLen qidFlgs acc dist ptsNN resultLen incl ex
   d <- peek datum
 
   let q = if (queryid_sequence_start qid) + (queryid_sequence_length qid) < (datum_nvectors d)
-          then poke qPtr query
+          then poke qPtr querySpec
           else throw $ QuerySequenceBoundsException (queryid_sequence_start qid) (queryid_sequence_length qid) (datum_nvectors d)
   q
 
