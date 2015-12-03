@@ -107,13 +107,6 @@ mkQuery datum secToFrames sqStart sqLen qidFlgs acc dist ptsNN resultLen incl ex
 
   d <- peek datum
 
-  putStrLn $ "FIXME: Why does this re-appear? query sequence start: "
-    ++ show (queryid_sequence_start qid)
-    ++ "; query sequence length: "
-    ++ show (queryid_sequence_length qid)
-    ++ "; datum length: "
-    ++ show (datum_nvectors d)
-
   let q = if (queryid_sequence_start qid) + (queryid_sequence_length qid) < (datum_nvectors d)
           then poke qPtr querySpec
           else throw $ QuerySequenceBoundsException (queryid_sequence_start qid) (queryid_sequence_length qid) (datum_nvectors d)
