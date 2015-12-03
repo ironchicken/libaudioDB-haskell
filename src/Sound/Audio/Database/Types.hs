@@ -18,27 +18,21 @@
 -- You should have received a copy of the GNU General Public License
 -- along with libaudioDB-haskell. If not, see <http://www.gnu.org/licenses/>.
 
-module Sound.Audio.Database.Ingest where
+module Sound.Audio.Database.Types where
 
-import AudioDB.API
-import Data.Maybe (isJust)
-import Foreign (Ptr, peek)
-import Foreign.C.Types
-import Sound.Audio.Database
+type Frame = Int
+type Seconds = Double
+type FrameSize = (Frame -> Seconds)
+type FeatureRate = (Seconds -> Frame)
 
-insertFeatures :: (Ptr ADB) -> ADBDatumPtr -> IO Bool
-insertFeatures adb datumPtr =
-  withADBStatus (\status -> do
-                    let powered = (status_flags status) == powerFlag
-                    datum       <- peek datumPtr
-                    res         <- if powered == isJust (datum_power datum)
-                                   then audiodb_insert_datum adb datumPtr
-                                   else return (1 :: CInt)
-                    return (res == (0 :: CInt)))
-  adb
+inSeconds :: FrameSize
+inSeconds = fromIntegral
 
-insertMaybeFeatures :: (Ptr ADB) -> (Maybe ADBDatumPtr) -> IO Bool
-insertMaybeFeatures adb datumPtr = do
-  maybe (return False)
-    (\p -> do { insertFeatures adb p })
-    datumPtr
+inFrames :: FeatureRate
+inFrames = ceiling
+
+withSeconds :: FeatureRate -> FrameSize -> (Seconds -> Seconds) -> Frame -> Frame
+withSeconds secToFrames framesToSec f frames = (secToFrames . f . framesToSec) frames
+
+withFrames :: FeatureRate -> FrameSize -> (Frame -> Frame) -> Seconds -> Seconds
+withFrames secToFrames framesToSec f seconds = (framesToSec . f . secToFrames) seconds

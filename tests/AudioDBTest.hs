@@ -1,12 +1,16 @@
 module Main where
 
 import           AudioDB.API
-import           AudioDB
+import qualified Data.Vector.Storable as V
 import           Foreign
 import           Foreign.C.Types
 import           Foreign.C.String
 import           Numeric
-import qualified Data.Vector.Storable as V
+import           Sound.Audio.Database
+import           Sound.Audio.Database.Ingest
+import           Sound.Audio.Database.Query
+import           Sound.Audio.Database.Types
+import           Sound.Audio.Features.ReadCSV
 
 test_readCSVFeatures :: String -> FilePath -> IO ()
 test_readCSVFeatures key fp = do

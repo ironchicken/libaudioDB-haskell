@@ -17,3 +17,80 @@
 
 -- You should have received a copy of the GNU General Public License
 -- along with libaudioDB-haskell. If not, see <http://www.gnu.org/licenses/>.
+
+{-# LANGUAGE DeriveDataTypeable #-}
+
+module Sound.Audio.Database where
+
+import AudioDB.API
+import Control.Exception (throw, Exception, bracket)
+import Control.Monad (when)
+import Data.Typeable (Typeable)
+import Foreign (Ptr, peek, nullPtr)
+import Foreign.C.String (newCString)
+import Foreign.Marshal.Alloc (alloca)
+import Sound.Audio.Database.Types
+--import System.C.IO
+
+data QueryException = QuerySequenceBoundsException Int Int Int
+                    | QueryDimensionsMismatchException Int Int
+                    deriving (Show, Typeable)
+instance Exception QueryException
+
+data DatabaseException = DBStatusException
+                       deriving (Show, Typeable)
+instance Exception DatabaseException
+
+openDB :: FilePath -> (Ptr ADB)
+openDB = undefined
+
+closeDB :: (Ptr ADB) -> IO ()
+closeDB = undefined
+
+createDB :: FilePath -> (Ptr ADB)
+createDB = undefined
+
+withAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> (Ptr ADB) -> ADBResult
+withAudioDB = undefined
+
+withExistingAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> FilePath -> ADBResult
+withExistingAudioDB = undefined
+
+withExistingROAudioDB :: FilePath -> (Maybe (Ptr ADB) -> IO a) -> IO a
+withExistingROAudioDB fp f = do
+  adbFN  <- newCString fp
+  bracket (audiodb_open adbFN 0)--(oflags [O_RDONLY]))
+    (\adb -> if adb /= nullPtr then audiodb_close adb else return ())
+    (\adb -> f $ if adb /= nullPtr then Just adb else Nothing)
+
+withNewAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> FilePath -> ADBResult
+withNewAudioDB = undefined
+
+withADBStatus :: (ADBStatus -> IO a) -> (Ptr ADB) -> IO a
+withADBStatus f adb = do
+  alloca $ \statusPtr -> do
+    res     <- audiodb_status adb statusPtr
+    when (res /= 0) (throw DBStatusException)
+    status  <- peek statusPtr
+    (f status)
+
+withMaybeDatumPtr :: (Ptr ADB) -> String -> (Maybe ADBDatumPtr -> a) -> IO a
+withMaybeDatumPtr adb key f = alloca $ \datumPtr -> do
+  key'  <- newCString key
+  res   <- audiodb_retrieve_datum adb key' datumPtr
+  if res /= 0
+    then do return $ f Nothing
+    else do return $ f (Just datumPtr)
+
+featuresFromKey :: (Ptr ADB) -> String -> IO (Maybe ADBDatumPtr)
+featuresFromKey adb key = withMaybeDatumPtr adb key id
+
+checkDimensions :: (Ptr ADB) -> ADBDatum -> IO Bool
+checkDimensions adb datum =
+  withADBStatus (\s -> if not (checkDim s datum)
+                       then throw $ QueryDimensionsMismatchException (status_dim s) (datum_dim datum)
+                       else return True) adb
+  where checkDim s d = (status_dim s) == (datum_dim d)
+
+emptyADBKeyList :: ADBKeyList
+emptyADBKeyList = ADBKeyList { keylist_nkeys = 0, keylist_keys = [] }

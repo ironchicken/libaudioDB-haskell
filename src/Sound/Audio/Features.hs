@@ -17,3 +17,44 @@
 
 -- You should have received a copy of the GNU General Public License
 -- along with libaudioDB-haskell. If not, see <http://www.gnu.org/licenses/>.
+
+module Sound.Audio.Features where
+
+import           AudioDB.API
+import qualified Data.Vector.Storable as DV
+import           Foreign.Marshal.Utils (new)
+import           Sound.Audio.Database
+import           Sound.Audio.Database.Types
+import           Text.Parsec.Error (ParseError)
+
+type DatumProperties     = (Int, Int, DV.Vector Double, Maybe (DV.Vector Double))
+type FeaturesParser      = (FilePath -> IO DatumProperties)
+type PowerFeaturesParser = (FilePath -> IO (Maybe (DV.Vector Double)))
+
+readFeaturesFile :: String                         -- key
+                    -> FilePath                    -- features file
+                    -> FeaturesParser              -- features parser
+                    -> Maybe (FilePath,
+                              PowerFeaturesParser) -- power features file, parser
+                    -> IO (Maybe ADBDatumPtr)
+readFeaturesFile key featuresFile featuresParser (Just (powersFile, powersParser)) = do
+  (n, dim, features, times) <- featuresParser featuresFile
+  pFeatures                 <- powersParser powersFile
+  let power = pFeatures
+  datum <- new ADBDatum { datum_nvectors = n
+                        , datum_dim      = dim
+                        , datum_key      = key
+                        , datum_data     = features
+                        , datum_power    = power
+                        , datum_times    = times }
+  return (Just datum)
+
+readFeaturesFile key featuresFile featuresParser Nothing = do
+  (n, dim, features, times) <- featuresParser featuresFile
+  datum <- new ADBDatum { datum_nvectors = n
+                        , datum_dim      = dim
+                        , datum_key      = key
+                        , datum_data     = features
+                        , datum_power    = Nothing
+                        , datum_times    = times }
+  return (Just datum)
