@@ -205,8 +205,8 @@ queryStep adb qPtr res = audiodb_query_spec_given_sofar adb qPtr res
 thenElseIfM :: (Monad m) => m a -> m a -> Bool -> m a
 thenElseIfM t f p = if p then t else f
 
-queryWithCallback :: (Ptr ADB) -> QueryAllocator -> QueryCallback a -> QueryComplete -> IO ADBQueryResultsPtr
-queryWithCallback adb alloc callback isFinished =
+queryWithCallbackPtr :: (Ptr ADB) -> QueryAllocator -> QueryCallback a -> QueryComplete -> IO ADBQueryResultsPtr
+queryWithCallbackPtr adb alloc callback isFinished =
   withQueryPtr adb alloc (\qPtr -> do
                              let iteration = 0
                                  initQ _   = queryStart adb qPtr
@@ -215,8 +215,12 @@ queryWithCallback adb alloc callback isFinished =
                              r0 <- initQ iteration
                              iterQ (iteration + 1) r0)
 
-queryWithTransform :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryComplete -> IO ADBQueryResultsPtr
-queryWithTransform adb alloc transform complete = do
+queryWithCallback :: (Ptr ADB) -> QueryAllocator -> QueryCallback a -> QueryComplete -> IO ADBQueryResults
+queryWithCallback adb alloc callback isFinished =
+  queryWithCallbackPtr adb alloc callback isFinished >>= peek
+
+queryWithTransformPtr :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryComplete -> IO ADBQueryResultsPtr
+queryWithTransformPtr adb alloc transform complete = do
   let iteration   = 0
       initQ _     = withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
       stepQ i a r = withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ (i + 1) a
@@ -224,8 +228,12 @@ queryWithTransform adb alloc transform complete = do
   r0 <- initQ iteration
   iterQ (iteration + 1) alloc r0
 
-queryWithCallbacksAndTransform :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryCallback a -> QueryComplete -> IO ADBQueryResultsPtr
-queryWithCallbacksAndTransform adb alloc transform callback complete = do
+queryWithTransform :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryComplete -> IO ADBQueryResults
+queryWithTransform adb alloc transform complete =
+  queryWithTransformPtr adb alloc transform complete >>= peek
+
+queryWithCallbacksAndTransformPtr :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryCallback a -> QueryComplete -> IO ADBQueryResultsPtr
+queryWithCallbacksAndTransformPtr adb alloc transform callback complete = do
   let iteration   = 0
       initQ _     = withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
       stepQ i a r = callback i r >> withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ (i + 1) a
@@ -233,15 +241,23 @@ queryWithCallbacksAndTransform adb alloc transform callback complete = do
   r0 <- initQ iteration
   iterQ (iteration + 1) alloc r0
 
-query :: (Ptr ADB) -> QueryAllocator -> Maybe QueryTransformer -> Maybe (QueryCallback a) -> Maybe QueryComplete -> IO ADBQueryResultsPtr
-query adb alloc Nothing          Nothing         Nothing           = querySinglePassPtr adb alloc
-query adb alloc (Just transform) Nothing         (Just isFinished) = queryWithTransform adb alloc transform isFinished
-query adb alloc Nothing          (Just callback) (Just isFinished) = queryWithCallback adb alloc callback isFinished
-query adb alloc (Just transform) (Just callback) (Just isFinished) = queryWithCallbacksAndTransform adb alloc transform callback isFinished
-query adb alloc Nothing          Nothing         (Just isFinished) = error "QueryComplete requires QueryTransformer and/or QueryCallback"
-query adb alloc (Just transform) Nothing         Nothing           = error "QueryTransform requires QueryComplete"
-query adb alloc Nothing          (Just callback) Nothing           = error "QueryCallback requires QueryComplete"
-query adb alloc (Just transform) (Just callback) Nothing           = error "QueryTransform and QueryCallback requires QueryComplete"
+queryWithCallbacksAndTransform :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryCallback a -> QueryComplete -> IO ADBQueryResults
+queryWithCallbacksAndTransform adb alloc transform callback complete =
+  queryWithCallbacksAndTransformPtr adb alloc transform callback complete >>= peek
+
+queryPtr :: (Ptr ADB) -> QueryAllocator -> Maybe QueryTransformer -> Maybe (QueryCallback a) -> Maybe QueryComplete -> IO ADBQueryResultsPtr
+queryPtr adb alloc Nothing          Nothing         Nothing           = querySinglePassPtr adb alloc
+queryPtr adb alloc (Just transform) Nothing         (Just isFinished) = queryWithTransformPtr adb alloc transform isFinished
+queryPtr adb alloc Nothing          (Just callback) (Just isFinished) = queryWithCallbackPtr adb alloc callback isFinished
+queryPtr adb alloc (Just transform) (Just callback) (Just isFinished) = queryWithCallbacksAndTransformPtr adb alloc transform callback isFinished
+queryPtr adb alloc Nothing          Nothing         (Just isFinished) = error "QueryComplete requires QueryTransformer and/or QueryCallback"
+queryPtr adb alloc (Just transform) Nothing         Nothing           = error "QueryTransform requires QueryComplete"
+queryPtr adb alloc Nothing          (Just callback) Nothing           = error "QueryCallback requires QueryComplete"
+queryPtr adb alloc (Just transform) (Just callback) Nothing           = error "QueryTransform and QueryCallback requires QueryComplete"
+
+query :: (Ptr ADB) -> QueryAllocator -> Maybe QueryTransformer -> Maybe (QueryCallback a) -> Maybe QueryComplete -> IO ADBQueryResults
+query adb alloc transform callback isFinished =
+  queryPtr adb alloc transform callback isFinished >>= peek
 
 mkPointQuery :: ADBDatumPtr   -- query features
                 -> ADBQuerySpecPtr
@@ -409,5 +425,5 @@ execSequenceQueryWithRotation :: (Ptr ADB)
                                -> [Int]        -- rotations
                                -> IO ADBQueryResults
 execSequenceQueryWithRotation adb datum secToFrames frameToSecs resultLen sqStart sqLen dist absThrsh rotations =
-  queryWithTransform adb alloc transform isFinished >>= peek
+  queryWithTransform adb alloc transform isFinished
   where (alloc, transform, isFinished) = mkSequenceQueryWithRotation datum secToFrames frameToSecs resultLen sqStart sqLen dist absThrsh rotations

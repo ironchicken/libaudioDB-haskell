@@ -116,8 +116,7 @@ test_transform_query adbFile queryFile qPowersFile start len = withExistingROAud
 
       res <- queryWithTransform adb qAlloc transform isFinished
       putStrLn "Final results:"
-      withResults res (\r -> putStrLn (showResults r))
-      return ()
+      putStrLn $ showResults res
 
 test_callbacktransform_query :: FilePath -> FilePath -> FilePath -> Seconds -> Seconds -> IO ()
 test_callbacktransform_query adbFile queryFile qPowersFile start len = withExistingROAudioDB adbFile runTestOnDB
@@ -135,8 +134,7 @@ test_callbacktransform_query adbFile queryFile qPowersFile start len = withExist
 
       res <- queryWithCallbacksAndTransform adb qAlloc transform callback isFinished
       putStrLn "Final results:"
-      withResults res (\r -> putStrLn (showResults r))
-      return ()
+      putStrLn $ showResults res
 
 test_rotation_query :: FilePath -> FilePath -> FilePath -> Seconds -> Seconds -> [Int] -> IO ()
 test_rotation_query adbFile queryFile qPowersFile start len rotations = withExistingROAudioDB adbFile runTestOnDB
@@ -158,9 +156,8 @@ test_polymorphic_query_with_rotations adbFile queryFile qPowersFile start len ro
     testQuery _ Nothing = putStrLn $ "Could not parse " ++ queryFile
     testQuery adb (Just datumPtr) = do
       let (qAlloc, qTransform, qComplete) = mkSequenceQueryWithRotation datumPtr (floor . (* framesPerSecond)) framesToSeconds 25 start len (Just euclideanNormedFlag) Nothing rotations
-      resPtr <- query adb qAlloc (Just qTransform) Nothing (Just qComplete)
-      res    <- peek resPtr
-      putStrLn (showResults res)
+      res <- query adb qAlloc (Just qTransform) Nothing (Just qComplete)
+      putStrLn $ showResults res
 
 db_file :: String
 db_file = undefined
