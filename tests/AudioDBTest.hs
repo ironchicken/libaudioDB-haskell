@@ -1,6 +1,6 @@
 module Main where
 
-import           ADB
+import           AudioDB.API
 import           AudioDB
 import           Foreign
 import           Foreign.C.Types

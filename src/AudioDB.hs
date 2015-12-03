@@ -25,7 +25,7 @@
 
 module AudioDB where
 
-import           ADB
+import           AudioDB.API
 import           Data.Maybe (isJust, catMaybes)
 import           Control.Monad (when)
 import           Control.Exception (throw, Exception, bracket)

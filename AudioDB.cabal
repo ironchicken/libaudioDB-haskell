@@ -10,7 +10,7 @@ cabal-version: >= 1.8
 
 library
   build-depends: base, filepath, vector, containers, parsec, MissingH
-  exposed-modules: AudioDB, ADB
+  exposed-modules: AudioDB, AudioDB.API
   hs-source-dirs: src
   ghc-options: -Wall
 
@@ -18,7 +18,7 @@ executable adb-test
   build-depends: base, vector
   main-is: ADBTest.hs
   hs-source-dirs: tests
-  other-modules: ADB
+  other-modules: AudioDB.API
   hs-source-dirs: src
   ghc-options: -Wall
   extra-libraries: audioDB
@@ -27,7 +27,7 @@ executable audiodb-test
   build-depends: base, vector, parsec, MissingH, filepath
   main-is: AudioDBTest.hs
   hs-source-dirs: tests
-  other-modules: AudioDB, ADB
+  other-modules: AudioDB, AudioDB.API
   hs-source-dirs: src
   ghc-options: -Wall
   extra-libraries: audioDB
