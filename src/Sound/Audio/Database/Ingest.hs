@@ -18,7 +18,8 @@
 -- You should have received a copy of the GNU General Public License
 -- along with libaudioDB-haskell. If not, see <http://www.gnu.org/licenses/>.
 
-module Sound.Audio.Database.Ingest where
+module Sound.Audio.Database.Ingest ( insertFeatures
+                                   , insertMaybeFeatures) where
 
 import AudioDB.API
 import Data.Maybe (isJust)

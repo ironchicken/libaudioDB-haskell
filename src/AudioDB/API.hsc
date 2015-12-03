@@ -19,14 +19,76 @@
 -- along with libaudioDB-haskell. If not, see <http://www.gnu.org/licenses/>.
 
 {-# LANGUAGE ForeignFunctionInterface, CPP #-}
-module AudioDB.API where
 
-import Data.List (intercalate)
-import Data.Char (chr)
-import Foreign
-import Foreign.C.Types
-import Foreign.C.String
+module AudioDB.API ( ADB
+                   , ADBDatum(..)
+                   , ADBDatumPtr
+                   , ADBKeyList(..)
+                   , ADBQueryID(..)
+                   , ADBQueryParameters(..)
+                   , ADBQueryRefine(..)
+                   , ADBQueryResults(..)
+                   , ADBQueryResultsPtr
+                   , ADBQuerySpec(..)
+                   , ADBQuerySpecPtr
+                   , ADBReference(..)
+                   , ADBResult(..)
+                   , ADBResultPtr
+                   , ADBStatus(..)
+                   , QueryIDFlag(..)
+                   , exhaustiveFlag
+                   , allowFalsePositivesFlag
+                   , HeaderFlag(..)
+                   , l2normFlag
+                   , powerFlag
+                   , timesFlag
+                   , referencesFlag
+                   , AccumulationFlag(..)
+                   , databaseFlag
+                   , perTrackFlag
+                   , oneToOneFlag
+                   , DistanceFlag(..)
+                   , dotProductFlag
+                   , euclideanNormedFlag
+                   , euclideanFlag
+                   , kullbackLeiblerDivergenceFlag
+                   , RefinementFlag(..)
+                   , combineRefinementFlags
+                   , includeKeyListFlag
+                   , excludeKeyListFlag
+                   , radiusFlag
+                   , absoluteThresholdFlag
+                   , relativeThresholdFlag
+                   , durationRatioFlag
+                   , hopSizeFlag
+                   , audiodb_lib_build_id
+                   , audiodb_lib_build_date
+                   , audiodb_open
+                   , audiodb_create
+                   , audiodb_close
+                   , audiodb_l2norm
+                   , audiodb_power
+                   , audiodb_insert_datum
+                   , audiodb_insert_reference
+                   , audiodb_query_spec
+                   , audiodb_query_spec_given_sofar
+                   , audiodb_query_free_results
+                   , audiodb_status
+                   , audiodb_retrieve_datum
+                   , audiodb_free_datum
+                   , audiodb_dump
+                   , audiodb_liszt
+                   , audiodb_liszt_free_results
+                   , audiodb_sample_spec
+                   , audiodb_insert
+                   , audiodb_batchinsert ) where
+
+import           Data.Char (chr)
+import           Data.List (intercalate)
 import qualified Data.Vector.Storable as DV
+import           Foreign
+import           Foreign.C.Types
+import           Foreign.C.String
 
 #include "audioDB/audioDB_API.h"
 

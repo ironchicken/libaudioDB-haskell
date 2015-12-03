@@ -18,7 +18,10 @@
 -- You should have received a copy of the GNU General Public License
 -- along with libaudioDB-haskell. If not, see <http://www.gnu.org/licenses/>.
 
-module Sound.Audio.Features.ReadCSV where
+module Sound.Audio.Features.ReadCSV ( readCSVFeaturesTimesPowers
+                                    , readCSVFeaturesPowers
+                                    , readCSVFeaturesTimes
+                                    , readCSVFeaturesOnly ) where
 
 import           AudioDB.API
 import           Data.CSV (csvFile)

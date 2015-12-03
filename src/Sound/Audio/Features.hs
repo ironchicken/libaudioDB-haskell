@@ -18,14 +18,15 @@
 -- You should have received a copy of the GNU General Public License
 -- along with libaudioDB-haskell. If not, see <http://www.gnu.org/licenses/>.
 
-module Sound.Audio.Features where
+module Sound.Audio.Features ( DatumProperties
+                            , FeaturesParser
+                            , PowerFeaturesParser
+                            , readFeaturesFile ) where
 
 import           AudioDB.API
 import qualified Data.Vector.Storable as DV
 import           Foreign.Marshal.Utils (new)
-import           Sound.Audio.Database
 import           Sound.Audio.Database.Types
-import           Text.Parsec.Error (ParseError)
 
 type DatumProperties     = (Int, Int, DV.Vector Double, Maybe (DV.Vector Double))
 type FeaturesParser      = (FilePath -> IO DatumProperties)

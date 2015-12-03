@@ -20,7 +20,58 @@
 
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Sound.Audio.Database where
+module Sound.Audio.Database ( QueryException(..)
+                            , DatabaseException(..)
+                            , withExistingROAudioDB
+                            , withADBStatus
+                            , withMaybeDatumPtr
+                            , featuresFromKey
+                            , checkDimensions
+                            , emptyADBKeyList
+                              -- Things re-exported from AudioDB.API
+                            , ADB
+                            , ADBDatum(..)
+                            , ADBDatumPtr
+                            , ADBKeyList(..)
+                            , ADBQueryID(..)
+                            , ADBQueryParameters(..)
+                            , ADBQueryRefine(..)
+                            , ADBQueryResults(..)
+                            , ADBQueryResultsPtr
+                            , ADBQuerySpec(..)
+                            , ADBQuerySpecPtr
+                            , ADBReference(..)
+                            , ADBResult(..)
+                            , ADBResultPtr
+                            , ADBStatus(..)
+                            , QueryIDFlag(..)
+                            , exhaustiveFlag
+                            , allowFalsePositivesFlag
+                            , HeaderFlag(..)
+                            , l2normFlag
+                            , powerFlag
+                            , timesFlag
+                            , referencesFlag
+                            , AccumulationFlag(..)
+                            , databaseFlag
+                            , perTrackFlag
+                            , oneToOneFlag
+                            , DistanceFlag(..)
+                            , dotProductFlag
+                            , euclideanNormedFlag
+                            , euclideanFlag
+                            , kullbackLeiblerDivergenceFlag
+                            , RefinementFlag(..)
+                            , combineRefinementFlags
+                            , includeKeyListFlag
+                            , excludeKeyListFlag
+                            , radiusFlag
+                            , absoluteThresholdFlag
+                            , relativeThresholdFlag
+                            , durationRatioFlag
+                            , hopSizeFlag
+                            , audiodb_lib_build_id
+                            , audiodb_lib_build_date ) where
 
 import AudioDB.API
 import Control.Exception (throw, Exception, bracket)

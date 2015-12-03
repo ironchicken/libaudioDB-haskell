@@ -18,10 +18,34 @@
 -- You should have received a copy of the GNU General Public License
 -- along with libaudioDB-haskell. If not, see <http://www.gnu.org/licenses/>.
 
-module Sound.Audio.Database.Query where
+module Sound.Audio.Database.Query ( QueryAllocator
+                                  , QueryTransformer
+                                  , QueryCallback
+                                  , QueryComplete
+                                  , querySinglePass
+                                  , querySinglePassPtr
+                                  , withQuery
+                                  , applyQuery
+                                  , withResults
+                                  , applyResults
+                                  , queryWithCallback
+                                  , queryWithTransform
+                                  , queryWithCallbacksAndTransform
+                                  , query
+                                  , mkPointQuery
+                                  , mkTrackQuery
+                                  , mkSequenceQuery
+                                  , execSequenceQuery
+                                  , transformSequenceQuery
+                                  , mkNSequenceQuery
+                                  , execNSequenceQuery
+                                  , mkSequenceQueryDeltaNTracks
+                                  , mkSequenceQueryMutateDatum
+                                  , mkSequenceQueryWithRotation
+                                  , execSequenceQueryWithRotation ) where
 
 import           AudioDB.API
-import           Control.Exception (throw, bracket)
+import           Control.Exception (throw)
 import qualified Data.Vector.Storable as DV
 import           Data.Maybe (catMaybes)
 import           Foreign (Ptr, peek, poke)

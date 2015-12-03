@@ -18,7 +18,14 @@
 -- You should have received a copy of the GNU General Public License
 -- along with libaudioDB-haskell. If not, see <http://www.gnu.org/licenses/>.
 
-module Sound.Audio.Database.Types where
+module Sound.Audio.Database.Types ( Frame
+                                  , Seconds
+                                  , FrameSize
+                                  , FeatureRate
+                                  , inSeconds
+                                  , inFrames
+                                  , withSeconds
+                                  , withFrames ) where
 
 type Frame = Int
 type Seconds = Double
