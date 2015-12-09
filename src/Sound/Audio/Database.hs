@@ -25,6 +25,7 @@ module Sound.Audio.Database ( QueryException(..)
                             , withExistingROAudioDB
                             , withADBStatus
                             , withMaybeDatumPtr
+                            , withNewAudioDB
                             , featuresFromKey
                             , checkDimensions
                             , emptyADBKeyList
@@ -114,8 +115,17 @@ withExistingROAudioDB fp f = do
     (\adb -> if adb /= nullPtr then audiodb_close adb else return ())
     (\adb -> f $ if adb /= nullPtr then Just adb else Nothing)
 
-withNewAudioDB :: (ADBQuerySpec -> ADBResult) -> FeatureRate -> FilePath -> ADBResult
-withNewAudioDB = undefined
+withNewAudioDB :: FilePath -- file name
+               -> Int      -- datasize
+               -> Int      -- number of tracks
+               -> Int      -- dimensions of features
+               -> (Maybe (Ptr ADB) -> IO a)
+               -> IO a
+withNewAudioDB fp datasize ntracks dim f = do
+  adbFN  <- newCString fp
+  bracket (audiodb_create adbFN (fromIntegral datasize) (fromIntegral ntracks) (fromIntegral dim))
+    (\adb -> if adb /= nullPtr then audiodb_close adb else return ())
+    (\adb -> f $ if adb /= nullPtr then Just adb else Nothing)
 
 withADBStatus :: (ADBStatus -> IO a) -> (Ptr ADB) -> IO a
 withADBStatus f adb = do

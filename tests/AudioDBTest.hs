@@ -57,6 +57,16 @@ showResult r =
     dist = showFFloat nd ((result_dist r))
     nd   = Just 2
 
+test_create_insert_retrieve :: FilePath -> FilePath -> String -> Int -> IO ()
+test_create_insert_retrieve adbFN featureFN featureKey dbDim =
+  withNewAudioDB adbFN 0 0 dbDim testDB
+  where
+    testDB Nothing    = putStrLn $ "Could not create database: " ++ adbFN
+    testDB (Just adb) = do
+      datumPtr <- readCSVFeaturesTimes featureKey featureFN
+      inserted <- insertMaybeFeatures adb datumPtr
+      putStrLn $ "Inserted '" ++ featureKey ++ "': " ++ (show inserted)
+
 test_sequence_query :: FilePath -> FilePath -> FilePath -> Seconds -> Seconds -> IO ()
 test_sequence_query adbFile queryFile qPowersFile start len =
   withExistingROAudioDB adbFile runTestOnDB
@@ -159,6 +169,9 @@ test_polymorphic_query_with_rotations adbFile queryFile qPowersFile start len ro
       res <- query adb qAlloc (Just qTransform) Nothing (Just qComplete)
       putStrLn $ showResults res
 
+new_db_file :: String
+new_db_file = undefined
+
 db_file :: String
 db_file = undefined
 
@@ -167,6 +180,9 @@ test_features_name = undefined
 
 test_features_file :: String
 test_features_file = undefined
+
+test_features_dim :: Int
+test_features_dim = undefined
 
 test_power_features_file :: String
 test_power_features_file = undefined
@@ -188,16 +204,12 @@ main = do
   -- fp       <- newCString db_file
   -- adb      <- audiodb_create fp (CUInt 0) (CUInt 0) (CUInt 12)
 
-  -- datumPtr <- readCSVFeaturesTimes test_features_name test_features_file
-  -- inserted <- insertMaybeFeatures adb datumPtr
-  -- putStrLn $ "Inserted '" ++ test_features_name ++ "': " ++ (show inserted)
-  -- maybe (return ()) (\d -> free d) datumPtr
-
   -- features <- featuresFromKey adb test_features_name
   -- maybe (putStrLn ("Could not retrieve '" ++ test_features_name ++ "'")) (\f -> do putStrLn $ "Found '" ++ (datum_key f) ++ "'") features
 
   -- test_readCSVFeatures test_features_name test_features_file
 
+  -- test_create_insert_retrieve new_db_file test_features_file test_features_name test_features_dim
   -- test_sequence_query db_file test_features_file test_power_features_file query_seq_start query_seq_length
   -- test_nsequence_query db_file test_features_file test_power_features_file query_seq_length query_hop_size
   -- test_transform_query db_file test_features_file test_power_features_file query_seq_start query_seq_length
