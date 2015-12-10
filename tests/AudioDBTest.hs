@@ -57,8 +57,8 @@ showResult r =
     dist = showFFloat nd ((result_dist r))
     nd   = Just 2
 
-test_create_insert_retrieve :: FilePath -> FilePath -> String -> Int -> IO ()
-test_create_insert_retrieve adbFN featureFN featureKey dbDim =
+test_create_insert :: FilePath -> FilePath -> String -> Int -> IO ()
+test_create_insert adbFN featureFN featureKey dbDim =
   withNewAudioDB adbFN 0 0 dbDim testDB
   where
     testDB Nothing    = putStrLn $ "Could not create database: " ++ adbFN
@@ -200,7 +200,7 @@ main :: IO ()
 main = do
   -- test_readCSVFeatures test_features_name test_features_file
 
-  -- test_create_insert_retrieve new_db_file test_features_file test_features_name test_features_dim
+  -- test_create_insert new_db_file test_features_file test_features_name test_features_dim
   -- test_sequence_query db_file test_features_file test_power_features_file query_seq_start query_seq_length
   -- test_nsequence_query db_file test_features_file test_power_features_file query_seq_length query_hop_size
   -- test_transform_query db_file test_features_file test_power_features_file query_seq_start query_seq_length
