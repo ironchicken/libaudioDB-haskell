@@ -69,9 +69,9 @@ Haskell bindings to the `libaudioDB` library.
 
 8. Run the simple API test:
 
-        $ cabal run adb-test
+        $ cabal run api-test
 
-   This runs the code in `tests/ADBTest.hs`. It will create a 2GB file
+   This runs the code in `tests/APITest.hs`. It will create a 2GB file
    called `test.adb` which you can delete afterwards. If you get to
    this point and it doesn't crash or complain that the library is
    missing then the gods are surely smiling on you and you should send
