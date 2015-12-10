@@ -52,6 +52,7 @@ import           Foreign (Ptr, peek, poke)
 import           Foreign.Marshal.Alloc (alloca)
 import           Sound.Audio.Database
 import           Sound.Audio.Database.Types
+import Debug.Trace
 
 (|||) :: Maybe a -> b -> Maybe b
 Just _  ||| b = Just b
@@ -131,6 +132,13 @@ mkQuery datum secToFrames sqStart sqLen qidFlgs acc dist ptsNN resultLen incl ex
 
   d <- peek datum
 
+  putStrLn $ "FIXME: Why does this re-appear? query sequence start: "
+    ++ show (queryid_sequence_start qid)
+    ++ "; query sequence length: "
+    ++ show (queryid_sequence_length qid)
+    ++ "; datum length: "
+    ++ show (datum_nvectors d)
+
   let q = if (queryid_sequence_start qid) + (queryid_sequence_length qid) < (datum_nvectors d)
           then poke qPtr querySpec
           else throw $ QuerySequenceBoundsException (queryid_sequence_start qid) (queryid_sequence_length qid) (datum_nvectors d)
@@ -165,6 +173,11 @@ withDetachedQueryPtr :: QueryAllocator -> (ADBQuerySpecPtr -> IO a) -> IO a
 withDetachedQueryPtr allocQuery f =
   alloca (\qPtr -> do
              allocQuery qPtr
+             let showQID myQPtr = do
+                   myQ <- peek myQPtr
+                   let d = (queryid_datum . query_spec_qid) myQ
+                   putStrLn $ "withDetachedQueryPtr called query allocator @ " ++ (show qPtr) ++ "; datum @ " ++ (show d)
+             showQID qPtr
              (f qPtr))
 
 applyDetachedQueryPtr :: (ADBQuerySpecPtr -> IO a) -> QueryAllocator -> IO a
@@ -230,9 +243,9 @@ queryWithCallback adb alloc callback isFinished =
 queryWithTransformPtr :: (Ptr ADB) -> QueryAllocator -> QueryTransformer -> QueryComplete -> IO ADBQueryResultsPtr
 queryWithTransformPtr adb alloc transform complete = do
   let iteration   = 0
-      initQ _     = withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
-      stepQ i a r = withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ (i + 1) a
-      iterQ i a r = complete i a r >>= thenElseIfM (return r) (stepQ i (transform i r a) r)
+      initQ _     = trace "Evaluating initQ" withQueryPtr adb alloc (\qPtr -> queryStart adb qPtr)
+      stepQ i a r = trace ("Evaluating stepQ with i = " ++ (show i) ++ "; r @ " ++ (show r)) withQueryPtr adb a (\qPtr -> queryStep adb qPtr r) >>= iterQ (i + 1) a
+      iterQ i a r = trace ("Evaluating iterQ with i = " ++ (show i) ++ "; r @ " ++ (show r)) complete i a r >>= thenElseIfM (return r) (stepQ i (transform i r a) r)
   r0 <- initQ iteration
   iterQ (iteration + 1) alloc r0
 
@@ -287,7 +300,7 @@ mkSequenceQuery :: ADBDatumPtr    -- query features
                    -> Maybe Double -- absolute power threshold
                    -> ADBQuerySpecPtr
                    -> IO ()
-mkSequenceQuery datum secToFrames resultLen sqStart sqLen dist absThrsh qPtr =
+mkSequenceQuery datum secToFrames resultLen sqStart sqLen dist absThrsh qPtr = trace ("Evaluating mkSequenceQuery with datum @ " ++ (show datum))
   mkQuery datum (Just secToFrames) (Just sqStart) (Just sqLen) Nothing (Just perTrackFlag) (dist ||| euclideanNormedFlag) (Just 1) (Just resultLen) Nothing Nothing Nothing (absThrsh ||| 0) Nothing Nothing Nothing Nothing qPtr
 
 execSequenceQuery :: (Ptr ADB)
@@ -374,16 +387,29 @@ mkSequenceQueryMutateDatum :: FeatureRate
                               -> QueryAllocator
                               -> ADBQuerySpecPtr
                               -> IO ()
-mkSequenceQueryMutateDatum secToFrames frameToSecs mutate res alloc qPtr = withDetachedQueryPtr alloc $ \fromPtr -> do
+mkSequenceQueryMutateDatum secToFrames frameToSecs mutate resPtr fromAlloc toPtr =
+  trace "Evaluating mkSequenceQueryMutateDatum" withDetachedQueryPtr fromAlloc $ \fromPtr -> do
+    putStrLn "Doing mkSequenceQueryMutateDatum"
     q <- peek fromPtr
-    let datum     = (queryid_datum . query_spec_qid) q
+    let datumPtr  = (queryid_datum . query_spec_qid) q
         resultLen = (query_parameters_ntracks . query_spec_params) q
         sqStart   = (queryid_sequence_start . query_spec_qid) q
         sqLen     = (queryid_sequence_length . query_spec_qid) q
         dist      = Just $ (query_parameters_distance . query_spec_params) q
         absThrsh  = Just $ (query_refine_absolute_threshold . query_spec_refine) q
-    mutate datum
-    mkSequenceQuery datum secToFrames resultLen (frameToSecs sqStart) (frameToSecs sqLen) dist absThrsh qPtr
+    mutate datumPtr
+    -- putStrLn $ "Making new sequence query with datum @" ++ (show datumPtr)
+    -- d <- peek datumPtr
+    -- putStrLn $ "Peeked datum @" ++ (show datumPtr)
+    -- putStrLn $ show "Key: " ++ (show (datum_key d)) ++
+    --   "; nVectors: " ++ (show (datum_nvectors d)) ++
+    --   "; dim: " ++ (show (datum_dim d)) ++
+    --   "; 240 features: " ++ (show (DV.take 240 (datum_data d)))-- ++
+    --   --"; 100 times: " ++ (show (maybe (DV.fromList [0]) (\t -> (DV.take 100 t)) (datum_times d)))
+
+    mkSequenceQuery datumPtr secToFrames resultLen (frameToSecs sqStart) (frameToSecs sqLen) dist absThrsh toPtr
+    putStrLn "Finished mkSequenceQueryMutateDatum"
+    putStrLn ""
 
 rotateVector :: (DV.Storable a) => Int -> DV.Vector a -> DV.Vector a
 rotateVector delta v = (DV.++) back front
@@ -398,12 +424,13 @@ mapSlices f sliceLen values = mapSlice 0
 rotateDatum :: Int -> ADBDatumPtr -> IO ()
 rotateDatum delta datumPtr = do
   datum  <- peek datumPtr
-
+  putStrLn $ "Rotating datum @" ++ (show datumPtr) ++ " by " ++ (show delta)
   let values    = datum_data datum
       rotValues = DV.concat $ mapSlices (rotateVector delta) (datum_dim datum) values
       rotDatum  = datum { datum_data = rotValues }
 
   poke datumPtr rotDatum
+  putStrLn $ "Rotated datum @" ++ (show datumPtr) ++ " by " ++ (show delta)
 
 mkSequenceQueryWithRotation :: ADBDatumPtr  -- query features
                                -> FeatureRate
@@ -418,7 +445,7 @@ mkSequenceQueryWithRotation :: ADBDatumPtr  -- query features
 mkSequenceQueryWithRotation datum secToFrames frameToSecs resultLen sqStart sqLen dist absThrsh rotations = (alloc, transform, isFinished)
   where
     alloc            = mkSequenceQuery datum secToFrames resultLen sqStart sqLen dist absThrsh
-    transform i r a  = mkSequenceQueryMutateDatum secToFrames frameToSecs (rotateDatum (rotations!!(i - 1))) r a
+    transform i r a  = trace ("Evaluating mkSequenceQueryWithRotation's transform function with i = " ++ (show i)) mkSequenceQueryMutateDatum secToFrames frameToSecs (rotateDatum (rotations!!(i - 1))) r a
     isFinished i _ r = return $ i > (length rotations)
 
 execSequenceQueryWithRotation :: (Ptr ADB)
