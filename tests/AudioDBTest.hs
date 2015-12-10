@@ -198,15 +198,6 @@ query_hop_size = undefined
 
 main :: IO ()
 main = do
-  -- FIXME If you reverse the sequence of insertCSVFeatures and
-  -- readCSVFeatures, the insert seems to be ineffective (i.e. audioDB
-  -- -Z on the resulting DB shows no content)
-  -- fp       <- newCString db_file
-  -- adb      <- audiodb_create fp (CUInt 0) (CUInt 0) (CUInt 12)
-
-  -- features <- featuresFromKey adb test_features_name
-  -- maybe (putStrLn ("Could not retrieve '" ++ test_features_name ++ "'")) (\f -> do putStrLn $ "Found '" ++ (datum_key f) ++ "'") features
-
   -- test_readCSVFeatures test_features_name test_features_file
 
   -- test_create_insert_retrieve new_db_file test_features_file test_features_name test_features_dim
