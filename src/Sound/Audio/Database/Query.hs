@@ -205,6 +205,14 @@ queryStep adb qPtr res = audiodb_query_spec_given_sofar adb qPtr res
 thenElseIfM :: (Monad m) => m a -> m a -> Bool -> m a
 thenElseIfM t f p = if p then t else f
 
+-- NOTE: This collection of multi-pass query execution functions make
+-- the single call to initQ (which is always the queryStart function)
+-- with i = 0; then the *first* call to iterQ will be made with i =
+-- 1. So you never get a call to iterQ with i = 0. Consequently, when
+-- you want to use the step argument to a QueryAllocator,
+-- QueryTransformer, or QueryComplete function, you need to bear in
+-- mind that you start from 1, at the second iteration.
+
 queryWithCallbackPtr :: (Ptr ADB) -> QueryAllocator -> QueryCallback a -> QueryComplete -> IO ADBQueryResultsPtr
 queryWithCallbackPtr adb alloc callback isFinished =
   withQueryPtr adb alloc (\qPtr -> do
@@ -410,8 +418,8 @@ mkSequenceQueryWithRotation :: ADBDatumPtr  -- query features
 mkSequenceQueryWithRotation datum secToFrames frameToSecs resultLen sqStart sqLen dist absThrsh rotations = (alloc, transform, isFinished)
   where
     alloc            = mkSequenceQuery datum secToFrames resultLen sqStart sqLen dist absThrsh
-    transform i r a  = mkSequenceQueryMutateDatum secToFrames frameToSecs (rotateDatum (rotations!!i)) r a
-    isFinished i _ r = return $ i == (length rotations)
+    transform i r a  = mkSequenceQueryMutateDatum secToFrames frameToSecs (rotateDatum (rotations!!(i - 1))) r a
+    isFinished i _ r = return $ i > (length rotations)
 
 execSequenceQueryWithRotation :: (Ptr ADB)
                                -> ADBDatumPtr  -- query features
