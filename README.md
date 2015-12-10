@@ -185,9 +185,6 @@ and also supply some values to the constants:
     new_db_file :: String
     new_db_file = undefined
     
-    db_file :: String
-    db_file = undefined
-    
     test_features_name :: String
     test_features_name = undefined
     
@@ -203,6 +200,9 @@ and also supply some values to the constants:
 These are sufficient for executing the `test_readCSVFeatures` and
 `test_create_insert` functions.
 
+    db_file :: String
+    db_file = undefined
+    
     query_seq_start :: Seconds
     query_seq_start = undefined
     
